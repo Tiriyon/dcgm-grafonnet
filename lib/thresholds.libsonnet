@@ -53,6 +53,34 @@
     { color: 'red', value: 40 },
   ],
 
+  // Efficiency score: red=underutilized, green=healthy, yellow/red=saturated
+  efficiency: [
+    { color: 'red', value: null },
+    { color: 'green', value: 40 },
+    { color: '#EAB839', value: 70 },
+    { color: 'red', value: 85 },
+  ],
+
+  // Idle GPU %: green=low idle (good), yellow/red=high idle (wasteful)
+  idleGpu: [
+    { color: 'green', value: null },
+    { color: '#EAB839', value: 20 },
+    { color: 'red', value: 40 },
+  ],
+
+  // MIG idle %: green=low idle, red=high idle (fragmentation risk)
+  migIdle: [
+    { color: 'green', value: null },
+    { color: '#EAB839', value: 25 },
+    { color: 'red', value: 50 },
+  ],
+
+  // Device workload status: blue = idle (0), green = active (1)
+  deviceStatus: [
+    { color: 'blue', value: null },
+    { color: 'green', value: 1 },
+  ],
+
   // Subtle background thresholds for table cells (memory)
   tableBgMemory: [
     { color: 'rgba(50, 172, 45, 0.2)', value: null },

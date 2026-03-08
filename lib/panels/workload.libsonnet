@@ -1,4 +1,6 @@
-// Row 4: Workload Analysis
+// Row 6 (new order): Workload Analysis
+// Table: removed GPU#, replaced Memory%+MemGB with VRAM Used/Total (MiB), added Node + GPU Model.
+// Load-over-time replaced with pure compute % repeated per node.
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local q = import '../queries.libsonnet';
 local t = import '../thresholds.libsonnet';
@@ -22,32 +24,37 @@ local tsDefaults =
 {
   panels: [
     row.new('Workload Analysis')
-    + row.withGridPos(33),
+    + row.withGridPos(121),
 
-    // Workload GPU Usage (table)
+    // Workload GPU Usage table
+    // Columns: Workload | Namespace | Node | GPU Model | MIG ID | Compute % | VRAM Used (MiB) | VRAM Total (MiB)
+    // GPU# removed; Memory% removed; MemGB replaced by MiB Used + MiB Total
     table.new('Workload GPU Usage')
-    + table.panelOptions.withDescription('Detailed workload GPU usage table')
-    + table.panelOptions.withGridPos(10, 24, 0, 34)
+    + table.panelOptions.withDescription('Per-workload GPU usage. VRAM shown as Used/Total (MiB). GPU column removed; Node and GPU Model added.')
+    + table.panelOptions.withGridPos(10, 24, 0, 122)
     + table.queryOptions.withTargets([
+      // A: Compute % — group-by includes Hostname + modelName
       prometheus.new(ds, q.workloadComputePct)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('A'),
 
-      prometheus.new(ds, q.workloadMemoryPct)
+      // B: VRAM used (MiB)
+      prometheus.new(ds, q.workloadVramUsed)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('B'),
 
-      prometheus.new(ds, q.workloadMemoryGB)
+      // C: VRAM total (MiB)
+      prometheus.new(ds, q.workloadVramTotal)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('C'),
     ])
     + table.options.withShowHeader(true)
-    + table.options.withSortBy([{ desc: true, displayName: 'Memory %' }])
+    + table.options.withSortBy([{ desc: true, displayName: 'Compute %' }])
     + table.standardOptions.withOverrides([
-      // Compute % column
+      // Compute % — gradient gauge
       table.standardOptions.override.byName.new('Compute %')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
         table.fieldConfig.defaults.custom.withDisplayMode('gradient-gauge')
@@ -56,30 +63,39 @@ local tsDefaults =
         + table.standardOptions.thresholds.withSteps(t.compute)
         + table.fieldConfig.defaults.custom.withWidth(150)
       ),
-      // Memory % column
-      table.standardOptions.override.byName.new('Memory %')
+      // VRAM Used (MiB)
+      table.standardOptions.override.byName.new('VRAM Used (MiB)')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
-        table.fieldConfig.defaults.custom.withDisplayMode('gradient-gauge')
-        + table.standardOptions.withMin(0)
-        + table.standardOptions.withMax(100)
-        + table.standardOptions.thresholds.withSteps(t.memory)
-        + table.fieldConfig.defaults.custom.withWidth(150)
+        table.standardOptions.withUnit('decmbytes')
+        + table.standardOptions.withDecimals(0)
+        + table.fieldConfig.defaults.custom.withWidth(140)
       ),
-      // Memory (GB) column
-      table.standardOptions.override.byName.new('Memory (GB)')
+      // VRAM Total (MiB)
+      table.standardOptions.override.byName.new('VRAM Total (MiB)')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
-        table.standardOptions.withUnit('decgbytes')
-        + table.standardOptions.withDecimals(2)
+        table.standardOptions.withUnit('decmbytes')
+        + table.standardOptions.withDecimals(0)
+        + table.fieldConfig.defaults.custom.withWidth(140)
       ),
-      // Workload column width
+      // Workload
       table.standardOptions.override.byName.new('Workload')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
-        table.fieldConfig.defaults.custom.withWidth(280)
+        table.fieldConfig.defaults.custom.withWidth(260)
       ),
-      // Namespace column width
+      // Namespace
       table.standardOptions.override.byName.new('Namespace')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
         table.fieldConfig.defaults.custom.withWidth(180)
+      ),
+      // Node
+      table.standardOptions.override.byName.new('Node')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.fieldConfig.defaults.custom.withWidth(160)
+      ),
+      // GPU Model
+      table.standardOptions.override.byName.new('GPU Model')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.fieldConfig.defaults.custom.withWidth(100)
       ),
     ])
     + {
@@ -88,46 +104,50 @@ local tsDefaults =
         {
           id: 'organize',
           options: {
-            excludeByName: { Time: true },
+            // Hide gpu (GPU#) and Time
+            excludeByName: { Time: true, gpu: true },
             indexByName: {
-              GPU_I_ID: 4,
-              Time: 0,
-              'Value #A': 5,
-              'Value #B': 6,
-              'Value #C': 7,
-              exported_namespace: 2,
               exported_pod: 1,
-              gpu: 3,
+              exported_namespace: 2,
+              Hostname: 3,
+              modelName: 4,
+              GPU_I_ID: 5,
+              'Value #A': 6,
+              'Value #B': 7,
+              'Value #C': 8,
             },
             renameByName: {
+              exported_pod: 'Workload',
+              exported_namespace: 'Namespace',
+              Hostname: 'Node',
+              modelName: 'GPU Model',
               GPU_I_ID: 'MIG ID',
               'Value #A': 'Compute %',
-              'Value #B': 'Memory %',
-              'Value #C': 'Memory (GB)',
-              exported_namespace: 'Namespace',
-              exported_pod: 'Workload',
-              gpu: 'GPU',
+              'Value #B': 'VRAM Used (MiB)',
+              'Value #C': 'VRAM Total (MiB)',
             },
           },
         },
       ],
     },
 
-    // Workload GPU Load Over Time (timeseries)
-    timeSeries.new('Workload GPU Load Over Time')
-    + timeSeries.panelOptions.withDescription('GPU load over time per workload')
-    + timeSeries.panelOptions.withGridPos(8, 24, 0, 44)
+    // Workload Compute % Over Time — repeated per node
+    // Pure GR engine active %; composite load formula removed.
+    timeSeries.new('Workload Compute % — $hostname')
+    + timeSeries.panelOptions.withDescription('GPU compute activity per workload on this node (GR engine active %)')
+    + timeSeries.panelOptions.withGridPos(8, 24, 0, 133)
+    + timeSeries.panelOptions.withRepeat('hostname')
     + timeSeries.queryOptions.withTargets([
-      prometheus.new(ds, q.workloadLoadOverTime)
-      + prometheus.withLegendFormat('{{exported_namespace}}/{{exported_pod}}'),
+      prometheus.new(ds, q.workloadComputeOverTime)
+      + prometheus.withLegendFormat('{{exported_namespace}}/{{exported_pod}} ({{GPU_I_PROFILE}})'),
     ])
     + timeSeries.standardOptions.withUnit('percent')
     + timeSeries.standardOptions.withMin(0)
     + timeSeries.standardOptions.withMax(100)
     + timeSeries.standardOptions.color.withMode('palette-classic')
-    + timeSeries.standardOptions.thresholds.withSteps(t.singleColor('green'))
+    + timeSeries.standardOptions.thresholds.withSteps(t.compute)
     + tsDefaults
-    + timeSeries.fieldConfig.defaults.custom.thresholdsStyle.withMode('off')
+    + timeSeries.fieldConfig.defaults.custom.thresholdsStyle.withMode('line')
     + timeSeries.options.legend.withDisplayMode('table')
     + timeSeries.options.legend.withPlacement('right')
     + timeSeries.options.legend.withShowLegend(true)

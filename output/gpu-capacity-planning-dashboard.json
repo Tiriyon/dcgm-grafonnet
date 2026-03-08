@@ -1,5 +1,5 @@
 {
-   "description": "AI Workload Capacity Planning Dashboard - Comprehensive GPU/MIG monitoring with memory, compute, and workload analysis",
+   "description": "AI Workload Capacity Planning — stack-level ordering: Nodes → Platform → Namespace → Workload",
    "editable": true,
    "graphTooltip": 1,
    "liveNow": true,
@@ -13,7 +13,7 @@
             "y": 0
          },
          "id": 1,
-         "title": "Cluster Overview - KPIs",
+         "title": "Device Inventory & Health",
          "type": "row"
       },
       {
@@ -21,1230 +21,32 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Total count of GPU devices and MIG instances",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "blue",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 0,
-            "y": 1
-         },
-         "id": 2,
-         "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "count(count by (gpu, GPU_I_ID, UUID) (DCGM_FI_DEV_FB_USED))",
-               "legendFormat": "Total"
-            }
-         ],
-         "title": "Total Devices",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Count of whole GPU devices (non-MIG)",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 3,
-            "y": 1
-         },
-         "id": 3,
-         "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "count(count by (gpu, GPU_I_ID, UUID) (DCGM_FI_DEV_FB_USED{GPU_I_ID=\"\"}))",
-               "legendFormat": "Whole GPUs"
-            }
-         ],
-         "title": "Whole GPUs",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Count of MIG instances",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "purple",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 6,
-            "y": 1
-         },
-         "id": 4,
-         "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "count(DCGM_FI_DEV_FB_USED{GPU_I_ID!=\"\"})",
-               "legendFormat": "MIG Instances"
-            }
-         ],
-         "title": "MIG Instances",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Count of active GPU deployments",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "orange",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 3,
-            "x": 9,
-            "y": 1
-         },
-         "id": 5,
-         "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "count(count by (exported_pod, exported_namespace) (DCGM_FI_DEV_FB_USED{exported_pod!=\"\"}))",
-               "legendFormat": "Workloads"
-            }
-         ],
-         "title": "Active Workloads",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Average composite load across all devices (60% compute + 40% memory)",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "max": 100,
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "red",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 40
-                     },
-                     {
-                        "color": "green",
-                        "value": 60
-                     }
-                  ]
-               },
-               "unit": "percent"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 12,
-            "y": 1
-         },
-         "id": 6,
-         "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg(\n  sum by (gpu, GPU_I_ID, UUID) (\n    (DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100 * 0.60)\n    +\n    ((DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100) * 0.40)\n  )\n)\n",
-               "legendFormat": "Avg Load"
-            }
-         ],
-         "title": "Avg Device Load",
-         "type": "gauge"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Devices with memory utilization over 85%",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 1
-                     },
-                     {
-                        "color": "red",
-                        "value": 3
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 16,
-            "y": 1
-         },
-         "id": 7,
-         "options": {
-            "colorMode": "background",
-            "graphMode": "area",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "count(((DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE)) * 100) > 85) or vector(0)",
-               "legendFormat": "Saturated"
-            }
-         ],
-         "title": "Memory Saturated (>85%)",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Devices with less than 20% composite load",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 3
-                     },
-                     {
-                        "color": "red",
-                        "value": 5
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 20,
-            "y": 1
-         },
-         "id": 8,
-         "options": {
-            "colorMode": "background",
-            "graphMode": "area",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "count(\n  sum by (gpu, GPU_I_ID, UUID) (\n    (DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100 * 0.60)\n    +\n    ((DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100) * 0.40)\n  ) < 20\n) or vector(0)\n",
-               "legendFormat": "Underutilized"
-            }
-         ],
-         "title": "Underutilized (<20%)",
-         "type": "stat"
-      },
-      {
-         "collapsed": false,
-         "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 5
-         },
-         "id": 9,
-         "title": "Memory Capacity Planning",
-         "type": "row"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Total GPU memory capacity across all devices",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "blue",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "decgbytes"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 0,
-            "y": 6
-         },
-         "id": 10,
-         "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum(DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) / 1024",
-               "legendFormat": "Total Capacity"
-            }
-         ],
-         "title": "Total Memory Capacity",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Total GPU memory currently in use",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "decgbytes"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 4,
-            "y": 6
-         },
-         "id": 11,
-         "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum(DCGM_FI_DEV_FB_USED) / 1024",
-               "legendFormat": "Used"
-            }
-         ],
-         "title": "Memory In Use",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Average memory utilization percentage across all devices",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "max": 100,
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 70
-                     },
-                     {
-                        "color": "red",
-                        "value": 85
-                     }
-                  ]
-               },
-               "unit": "percent"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 8,
-            "y": 6
-         },
-         "id": 12,
-         "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg((DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE)) * 100)",
-               "legendFormat": "Avg Memory %"
-            }
-         ],
-         "title": "Avg Memory Utilization",
-         "type": "gauge"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Percentage of devices at risk of OOM (>85% memory)",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "max": 100,
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 20
-                     },
-                     {
-                        "color": "red",
-                        "value": 40
-                     }
-                  ]
-               },
-               "unit": "percent"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 12,
-            "y": 6
-         },
-         "id": 13,
-         "options": {
-            "colorMode": "background",
-            "graphMode": "area",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "(\n  count((DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE)) > 0.85)\n  /\n  count(DCGM_FI_DEV_FB_USED)\n) * 100 or vector(0)\n",
-               "legendFormat": "OOM Risk %"
-            }
-         ],
-         "title": "OOM Risk %",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Average temperature across all GPUs",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 70
-                     },
-                     {
-                        "color": "red",
-                        "value": 80
-                     }
-                  ]
-               },
-               "unit": "celsius"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 16,
-            "y": 6
-         },
-         "id": 14,
-         "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg(DCGM_FI_DEV_GPU_TEMP)",
-               "legendFormat": "Avg Temp"
-            }
-         ],
-         "title": "Avg Temperature",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Average power usage per device",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "orange",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "watt"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 20,
-            "y": 6
-         },
-         "id": 15,
-         "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg(DCGM_FI_DEV_POWER_USAGE)",
-               "legendFormat": "Avg Power"
-            }
-         ],
-         "title": "Avg Power per Device",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Memory utilization per device over time",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
-                  "showPoints": "never",
-                  "spanNulls": false,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "line"
-                  }
-               },
-               "max": 100,
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 70
-                     },
-                     {
-                        "color": "red",
-                        "value": 85
-                     }
-                  ]
-               },
-               "unit": "percent"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 10
-         },
-         "id": 16,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100\n)\n",
-               "legendFormat": "{{Hostname}}-GPU{{gpu}}-MIG{{GPU_I_ID}}"
-            }
-         ],
-         "title": "Memory Utilization % by Device",
-         "type": "timeseries"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "GPU memory distribution by namespace",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "unit": "decmbytes"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 6,
-            "x": 12,
-            "y": 10
-         },
-         "id": 17,
-         "options": {
-            "displayLabels": [
-               "name",
-               "percent"
-            ],
-            "legend": {
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "values": [
-                  "value",
-                  "percent"
-               ]
-            },
-            "pieType": "donut",
-            "tooltip": {
-               "mode": "single"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum by (exported_namespace) (DCGM_FI_DEV_FB_USED{exported_pod!=\"\"})",
-               "legendFormat": "{{exported_namespace}}"
-            }
-         ],
-         "title": "Memory by Namespace",
-         "type": "piechart"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Memory used by workloads over time",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
-                  "showPoints": "never",
-                  "spanNulls": false,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "off"
-                  }
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "decmbytes"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 6,
-            "x": 18,
-            "y": 10
-         },
-         "id": 18,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max"
-               ],
-               "displayMode": "table",
-               "placement": "bottom",
-               "showLegend": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum by (exported_pod, exported_namespace) (DCGM_FI_DEV_FB_USED{exported_pod!=\"\"})",
-               "legendFormat": "{{exported_namespace}}/{{exported_pod}}"
-            }
-         ],
-         "title": "Workload Memory Over Time",
-         "type": "timeseries"
-      },
-      {
-         "collapsed": false,
-         "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 18
-         },
-         "id": 19,
-         "title": "Device Load Analysis",
-         "type": "row"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Composite load (60% compute + 40% memory) per GPU/MIG device",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "max": 100,
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 60
-                     },
-                     {
-                        "color": "red",
-                        "value": 85
-                     }
-                  ]
-               },
-               "unit": "percent"
-            }
-         },
-         "gridPos": {
-            "h": 6,
-            "w": 24,
-            "x": 0,
-            "y": 19
-         },
-         "id": 20,
-         "options": {
-            "displayMode": "gradient",
-            "minVizHeight": 10,
-            "minVizWidth": 0,
-            "orientation": "horizontal",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            },
-            "showUnfilled": true
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum by (gpu, GPU_I_ID, GPU_I_PROFILE, Hostname, modelName, UUID) (\n  (DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100 * 0.60)\n  +\n  ((DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100) * 0.40)\n)\n",
-               "legendFormat": "{{Hostname}}-GPU{{gpu}}-{{GPU_I_PROFILE}}"
-            }
-         ],
-         "title": "Device Composite Load",
-         "type": "bargauge"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Top 10 devices by composite load over time",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
-                  "showPoints": "never",
-                  "spanNulls": false,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "line"
-                  }
-               },
-               "max": 100,
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 60
-                     },
-                     {
-                        "color": "red",
-                        "value": 85
-                     }
-                  ]
-               },
-               "unit": "percent"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 25
-         },
-         "id": 21,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "topk(10,\n  sum by (gpu, GPU_I_ID, GPU_I_PROFILE, Hostname, modelName, UUID) (\n    (DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100 * 0.60)\n    +\n    ((DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100) * 0.40)\n  )\n)\n",
-               "legendFormat": "{{Hostname}}-GPU{{gpu}}-{{GPU_I_PROFILE}}"
-            }
-         ],
-         "title": "Top 10 Devices by Load",
-         "type": "timeseries"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Graphics engine activity (compute) per device",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
-                  "showPoints": "never",
-                  "spanNulls": false,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "off"
-                  }
-               },
-               "max": 100,
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "percent"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 25
-         },
-         "id": 22,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100)",
-               "legendFormat": "{{Hostname}}-GPU{{gpu}}-MIG{{GPU_I_ID}}"
-            }
-         ],
-         "title": "Compute % by Device",
-         "type": "timeseries"
-      },
-      {
-         "collapsed": false,
-         "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 33
-         },
-         "id": 23,
-         "title": "Workload Analysis",
-         "type": "row"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Detailed workload GPU usage table",
+         "description": "At-a-glance device status: blue = idle, green = has active workload",
          "fieldConfig": {
             "overrides": [
                {
                   "matcher": {
                      "id": "byName",
-                     "options": "Compute %"
+                     "options": "Status"
                   },
                   "properties": [
                      {
+                        "id": "color",
+                        "value": {
+                           "mode": "thresholds"
+                        }
+                     },
+                     {
                         "id": "custom.displayMode",
-                        "value": "gradient-gauge"
+                        "value": "color-background"
                      },
                      {
                         "id": "custom.width",
-                        "value": 150
+                        "value": 50
                      },
                      {
                         "id": "max",
-                        "value": 100
+                        "value": 1
                      },
                      {
                         "id": "min",
@@ -1255,78 +57,33 @@
                         "value": {
                            "steps": [
                               {
-                                 "color": "green",
+                                 "color": "blue",
                                  "value": null
                               },
                               {
-                                 "color": "#EAB839",
-                                 "value": 60
-                              },
-                              {
-                                 "color": "red",
-                                 "value": 85
-                              }
-                           ]
-                        }
-                     }
-                  ]
-               },
-               {
-                  "matcher": {
-                     "id": "byName",
-                     "options": "Memory %"
-                  },
-                  "properties": [
-                     {
-                        "id": "custom.displayMode",
-                        "value": "gradient-gauge"
-                     },
-                     {
-                        "id": "custom.width",
-                        "value": 150
-                     },
-                     {
-                        "id": "max",
-                        "value": 100
-                     },
-                     {
-                        "id": "min",
-                        "value": 0
-                     },
-                     {
-                        "id": "thresholds",
-                        "value": {
-                           "steps": [
-                              {
                                  "color": "green",
-                                 "value": null
-                              },
-                              {
-                                 "color": "#EAB839",
-                                 "value": 70
-                              },
-                              {
-                                 "color": "red",
-                                 "value": 85
+                                 "value": 1
                               }
                            ]
                         }
-                     }
-                  ]
-               },
-               {
-                  "matcher": {
-                     "id": "byName",
-                     "options": "Memory (GB)"
-                  },
-                  "properties": [
-                     {
-                        "id": "decimals",
-                        "value": 2
                      },
                      {
-                        "id": "unit",
-                        "value": "decgbytes"
+                        "id": "mappings",
+                        "value": [
+                           {
+                              "options": {
+                                 "0": {
+                                    "index": 0,
+                                    "text": "■"
+                                 },
+                                 "1": {
+                                    "index": 1,
+                                    "text": "■"
+                                 }
+                              },
+                              "type": "value"
+                           }
+                        ]
                      }
                   ]
                },
@@ -1338,319 +95,49 @@
                   "properties": [
                      {
                         "id": "custom.width",
-                        "value": 280
+                        "value": 220
                      }
                   ]
                },
                {
                   "matcher": {
                      "id": "byName",
-                     "options": "Namespace"
+                     "options": "Host"
                   },
                   "properties": [
                      {
                         "id": "custom.width",
-                        "value": 180
+                        "value": 160
                      }
                   ]
-               }
-            ]
-         },
-         "gridPos": {
-            "h": 10,
-            "w": 24,
-            "x": 0,
-            "y": 34
-         },
-         "id": 24,
-         "options": {
-            "showHeader": true,
-            "sortBy": [
+               },
                {
-                  "desc": true,
-                  "displayName": "Memory %"
-               }
-            ]
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID) (DCGM_FI_PROF_GR_ENGINE_ACTIVE{exported_pod!=\"\"} * 100)",
-               "format": "table",
-               "instant": true,
-               "refId": "A"
-            },
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID) (\n  DCGM_FI_DEV_FB_USED{exported_pod!=\"\"} / (DCGM_FI_DEV_FB_USED{exported_pod!=\"\"} + DCGM_FI_DEV_FB_FREE{exported_pod!=\"\"}) * 100\n)\n",
-               "format": "table",
-               "instant": true,
-               "refId": "B"
-            },
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID) (DCGM_FI_DEV_FB_USED{exported_pod!=\"\"} / 1024)",
-               "format": "table",
-               "instant": true,
-               "refId": "C"
-            }
-         ],
-         "title": "Workload GPU Usage",
-         "transformations": [
-            {
-               "id": "merge",
-               "options": { }
-            },
-            {
-               "id": "organize",
-               "options": {
-                  "excludeByName": {
-                     "Time": true
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Model"
                   },
-                  "indexByName": {
-                     "GPU_I_ID": 4,
-                     "Time": 0,
-                     "Value #A": 5,
-                     "Value #B": 6,
-                     "Value #C": 7,
-                     "exported_namespace": 2,
-                     "exported_pod": 1,
-                     "gpu": 3
-                  },
-                  "renameByName": {
-                     "GPU_I_ID": "MIG ID",
-                     "Value #A": "Compute %",
-                     "Value #B": "Memory %",
-                     "Value #C": "Memory (GB)",
-                     "exported_namespace": "Namespace",
-                     "exported_pod": "Workload",
-                     "gpu": "GPU"
-                  }
-               }
-            }
-         ],
-         "type": "table"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "GPU load over time per workload",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
-                  "showPoints": "never",
-                  "spanNulls": false,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "off"
-                  }
-               },
-               "max": 100,
-               "min": 0,
-               "thresholds": {
-                  "steps": [
+                  "properties": [
                      {
-                        "color": "green",
-                        "value": null
+                        "id": "custom.width",
+                        "value": 120
                      }
                   ]
-               },
-               "unit": "percent"
-            }
+               }
+            ]
          },
          "gridPos": {
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 44
+            "y": 1
          },
-         "id": 25,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum by (exported_pod, exported_namespace, gpu, GPU_I_ID, GPU_I_PROFILE, Hostname, UUID) (\n  (DCGM_FI_PROF_GR_ENGINE_ACTIVE{exported_pod!=\"\"} * 100 * 0.60)\n  +\n  ((DCGM_FI_DEV_FB_USED{exported_pod!=\"\"} / (DCGM_FI_DEV_FB_USED{exported_pod!=\"\"} + DCGM_FI_DEV_FB_FREE{exported_pod!=\"\"}) * 100) * 0.40)\n)\n",
-               "legendFormat": "{{exported_namespace}}/{{exported_pod}}"
-            }
-         ],
-         "title": "Workload GPU Load Over Time",
-         "type": "timeseries"
-      },
-      {
-         "collapsed": false,
-         "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 52
-         },
-         "id": 26,
-         "title": "Deployment-Level Metrics (kube-state-metrics)",
-         "type": "row"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Memory utilization by Kubernetes deployment",
-         "fieldConfig": {
-            "overrides": [
-               {
-                  "matcher": {
-                     "id": "byName",
-                     "options": "Memory %"
-                  },
-                  "properties": [
-                     {
-                        "id": "custom.displayMode",
-                        "value": "gradient-gauge"
-                     },
-                     {
-                        "id": "custom.width",
-                        "value": 200
-                     },
-                     {
-                        "id": "max",
-                        "value": 100
-                     },
-                     {
-                        "id": "min",
-                        "value": 0
-                     },
-                     {
-                        "id": "thresholds",
-                        "value": {
-                           "steps": [
-                              {
-                                 "color": "green",
-                                 "value": null
-                              },
-                              {
-                                 "color": "#EAB839",
-                                 "value": 70
-                              },
-                              {
-                                 "color": "red",
-                                 "value": 85
-                              }
-                           ]
-                        }
-                     }
-                  ]
-               },
-               {
-                  "matcher": {
-                     "id": "byName",
-                     "options": "Compute %"
-                  },
-                  "properties": [
-                     {
-                        "id": "custom.displayMode",
-                        "value": "gradient-gauge"
-                     },
-                     {
-                        "id": "custom.width",
-                        "value": 200
-                     },
-                     {
-                        "id": "max",
-                        "value": 100
-                     },
-                     {
-                        "id": "min",
-                        "value": 0
-                     },
-                     {
-                        "id": "thresholds",
-                        "value": {
-                           "steps": [
-                              {
-                                 "color": "green",
-                                 "value": null
-                              },
-                              {
-                                 "color": "#EAB839",
-                                 "value": 60
-                              },
-                              {
-                                 "color": "red",
-                                 "value": 85
-                              }
-                           ]
-                        }
-                     }
-                  ]
-               },
-               {
-                  "matcher": {
-                     "id": "byName",
-                     "options": "Deployment"
-                  },
-                  "properties": [
-                     {
-                        "id": "custom.width",
-                        "value": 250
-                     }
-                  ]
-               }
-            ]
-         },
-         "gridPos": {
-            "h": 10,
-            "w": 24,
-            "x": 0,
-            "y": 53
-         },
-         "id": 27,
+         "id": 2,
          "options": {
             "showHeader": true,
             "sortBy": [
                {
-                  "desc": true,
-                  "displayName": "Memory %"
+                  "desc": false,
+                  "displayName": "Host"
                }
             ]
          },
@@ -1661,46 +148,37 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum by (deployment, exported_namespace) (\n  DCGM_FI_PROF_GR_ENGINE_ACTIVE{exported_pod!=\"\"} * 100\n* on(exported_pod, exported_namespace) group_left(deployment)\nlabel_replace(\n  label_replace(\n    label_replace(\n      kube_pod_owner{owner_kind=\"ReplicaSet\"},\n      \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n    ),\n    \"exported_pod\", \"$1\", \"pod\", \"(.+)\"\n  ),\n  \"exported_namespace\", \"$1\", \"namespace\", \"(.+)\"\n)\n)",
+               "expr": "(\n  clamp_max(\n    count by (Hostname, modelName, gpu, GPU_I_ID, GPU_I_PROFILE, UUID, exported_pod) (\n      DCGM_FI_DEV_FB_USED{exported_pod!=\"\"}\n    ),\n    1\n  )\n)\nor\n(\n  (\n    count by (Hostname, modelName, gpu, GPU_I_ID, GPU_I_PROFILE, UUID) (DCGM_FI_DEV_FB_USED)\n    unless\n    count by (Hostname, modelName, gpu, GPU_I_ID, GPU_I_PROFILE, UUID) (DCGM_FI_DEV_FB_USED{exported_pod!=\"\"})\n  ) * 0\n)\n",
                "format": "table",
                "instant": true,
                "refId": "A"
-            },
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum by (deployment, exported_namespace) (\n  (DCGM_FI_DEV_FB_USED{exported_pod!=\"\"} / (DCGM_FI_DEV_FB_USED{exported_pod!=\"\"} + DCGM_FI_DEV_FB_FREE{exported_pod!=\"\"}) * 100)\n* on(exported_pod, exported_namespace) group_left(deployment)\nlabel_replace(\n  label_replace(\n    label_replace(\n      kube_pod_owner{owner_kind=\"ReplicaSet\"},\n      \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n    ),\n    \"exported_pod\", \"$1\", \"pod\", \"(.+)\"\n  ),\n  \"exported_namespace\", \"$1\", \"namespace\", \"(.+)\"\n)\n)",
-               "format": "table",
-               "instant": true,
-               "refId": "B"
             }
          ],
-         "title": "GPU Usage by Deployment",
+         "title": "Device Workload Map",
          "transformations": [
-            {
-               "id": "merge",
-               "options": { }
-            },
             {
                "id": "organize",
                "options": {
                   "excludeByName": {
-                     "Time": true
+                     "GPU_I_ID": true,
+                     "Time": true,
+                     "UUID": true
                   },
                   "indexByName": {
-                     "Time": 0,
-                     "Value #A": 3,
-                     "Value #B": 4,
-                     "deployment": 1,
-                     "exported_namespace": 2
+                     "GPU_I_PROFILE": 2,
+                     "Hostname": 0,
+                     "Value #A": 4,
+                     "exported_pod": 5,
+                     "gpu": 3,
+                     "modelName": 1
                   },
                   "renameByName": {
-                     "Value #A": "Compute %",
-                     "Value #B": "Memory %",
-                     "deployment": "Deployment",
-                     "exported_namespace": "Namespace"
+                     "GPU_I_PROFILE": "Profile",
+                     "Hostname": "Host",
+                     "Value #A": "Status",
+                     "exported_pod": "Workload",
+                     "gpu": "GPU",
+                     "modelName": "Model"
                   }
                }
             }
@@ -1708,68 +186,13 @@
          "type": "table"
       },
       {
-         "collapsed": false,
-         "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 63
-         },
-         "id": 28,
-         "title": "Device Inventory & Health",
-         "type": "row"
-      },
-      {
          "datasource": {
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Comprehensive device status table",
+         "description": "Per-node GPU device inventory. Sorted by compute utilization.",
          "fieldConfig": {
             "overrides": [
-               {
-                  "matcher": {
-                     "id": "byName",
-                     "options": "Load %"
-                  },
-                  "properties": [
-                     {
-                        "id": "custom.displayMode",
-                        "value": "gradient-gauge"
-                     },
-                     {
-                        "id": "custom.width",
-                        "value": 150
-                     },
-                     {
-                        "id": "max",
-                        "value": 100
-                     },
-                     {
-                        "id": "min",
-                        "value": 0
-                     },
-                     {
-                        "id": "thresholds",
-                        "value": {
-                           "steps": [
-                              {
-                                 "color": "green",
-                                 "value": null
-                              },
-                              {
-                                 "color": "#EAB839",
-                                 "value": 60
-                              },
-                              {
-                                 "color": "red",
-                                 "value": 85
-                              }
-                           ]
-                        }
-                     }
-                  ]
-               },
                {
                   "matcher": {
                      "id": "byName",
@@ -1851,7 +274,7 @@
                {
                   "matcher": {
                      "id": "byName",
-                     "options": "Used (GB)"
+                     "options": "VRAM Used (GB)"
                   },
                   "properties": [
                      {
@@ -1867,7 +290,7 @@
                {
                   "matcher": {
                      "id": "byName",
-                     "options": "Total (GB)"
+                     "options": "VRAM Total (GB)"
                   },
                   "properties": [
                      {
@@ -1943,7 +366,7 @@
                   "properties": [
                      {
                         "id": "custom.width",
-                        "value": 150
+                        "value": 130
                      }
                   ]
                },
@@ -1965,26 +388,27 @@
             "h": 12,
             "w": 24,
             "x": 0,
-            "y": 64
+            "y": 10
          },
-         "id": 29,
+         "id": 3,
          "options": {
             "showHeader": true,
             "sortBy": [
                {
                   "desc": true,
-                  "displayName": "Load %"
+                  "displayName": "Compute %"
                }
             ]
          },
          "pluginVersion": "v11.4.0",
+         "repeat": "hostname",
          "targets": [
             {
                "datasource": {
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum by (gpu, GPU_I_ID, GPU_I_PROFILE, Hostname, modelName, UUID) (\n  (DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100 * 0.60)\n  +\n  ((DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100) * 0.40)\n)\n",
+               "expr": "avg by (gpu, GPU_I_ID, GPU_I_PROFILE, Hostname, modelName, UUID) (\n  DCGM_FI_PROF_GR_ENGINE_ACTIVE{Hostname=~\"$hostname\"} * 100\n)\n",
                "format": "table",
                "instant": true,
                "refId": "A"
@@ -1994,7 +418,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100)",
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_FB_USED{Hostname=~\"$hostname\"}\n  / (DCGM_FI_DEV_FB_USED{Hostname=~\"$hostname\"} + DCGM_FI_DEV_FB_FREE{Hostname=~\"$hostname\"}) * 100\n)\n",
                "format": "table",
                "instant": true,
                "refId": "B"
@@ -2004,7 +428,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) * 100\n)\n",
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_FB_USED{Hostname=~\"$hostname\"} / 1024\n)\n",
                "format": "table",
                "instant": true,
                "refId": "C"
@@ -2014,7 +438,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (DCGM_FI_DEV_FB_USED / 1024)",
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  (DCGM_FI_DEV_FB_USED{Hostname=~\"$hostname\"} + DCGM_FI_DEV_FB_FREE{Hostname=~\"$hostname\"}) / 1024\n)\n",
                "format": "table",
                "instant": true,
                "refId": "D"
@@ -2024,7 +448,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) ((DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) / 1024)",
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_POWER_USAGE{Hostname=~\"$hostname\"}\n)\n",
                "format": "table",
                "instant": true,
                "refId": "E"
@@ -2034,23 +458,13 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (DCGM_FI_DEV_POWER_USAGE)",
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_GPU_TEMP{Hostname=~\"$hostname\"}\n)\n",
                "format": "table",
                "instant": true,
                "refId": "F"
-            },
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (DCGM_FI_DEV_GPU_TEMP)",
-               "format": "table",
-               "instant": true,
-               "refId": "G"
             }
          ],
-         "title": "Device Inventory & Status",
+         "title": "Device Inventory & Status — $hostname",
          "transformations": [
             {
                "id": "merge",
@@ -2067,14 +481,12 @@
                      "GPU_I_ID": 2,
                      "GPU_I_PROFILE": 3,
                      "Hostname": 0,
-                     "UUID": 13,
                      "Value #A": 5,
                      "Value #B": 6,
                      "Value #C": 7,
                      "Value #D": 8,
                      "Value #E": 9,
                      "Value #F": 10,
-                     "Value #G": 11,
                      "gpu": 1,
                      "modelName": 4
                   },
@@ -2082,16 +494,281 @@
                      "GPU_I_ID": "MIG ID",
                      "GPU_I_PROFILE": "Profile",
                      "Hostname": "Host",
-                     "UUID": "",
-                     "Value #A": "Load %",
-                     "Value #B": "Compute %",
-                     "Value #C": "Memory %",
-                     "Value #D": "Used (GB)",
-                     "Value #E": "Total (GB)",
-                     "Value #F": "Power (W)",
-                     "Value #G": "Temp (C)",
+                     "Value #A": "Compute %",
+                     "Value #B": "Memory %",
+                     "Value #C": "VRAM Used (GB)",
+                     "Value #D": "VRAM Total (GB)",
+                     "Value #E": "Power (W)",
+                     "Value #F": "Temp (C)",
                      "gpu": "GPU",
                      "modelName": "Model"
+                  }
+               }
+            }
+         ],
+         "type": "table"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Node CPU and RAM from kube-state-metrics / cAdvisor. Node label must match $hostname.",
+         "fieldConfig": {
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "CPU Used (cores)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "CPU Total (cores)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "RAM Used (MiB)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "decmbytes"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "RAM Total (MiB)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "decmbytes"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Node"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 180
+                     }
+                  ]
+               }
+            ]
+         },
+         "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 23
+         },
+         "id": 4,
+         "options": {
+            "showHeader": true
+         },
+         "pluginVersion": "v11.4.0",
+         "repeat": "hostname",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (node) (\n  rate(container_cpu_usage_seconds_total{\n    container!=\"\", container!=\"POD\", node=~\"$hostname\"\n  }[5m])\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "A"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "kube_node_status_allocatable{resource=\"cpu\", node=~\"$hostname\"}",
+               "format": "table",
+               "instant": true,
+               "refId": "B"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (node) (\n  container_memory_working_set_bytes{\n    container!=\"\", container!=\"POD\", node=~\"$hostname\"\n  }\n) / (1024 * 1024)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "C"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "kube_node_status_allocatable{resource=\"memory\", node=~\"$hostname\"} / (1024 * 1024)",
+               "format": "table",
+               "instant": true,
+               "refId": "D"
+            }
+         ],
+         "title": "Node Resources — $hostname",
+         "transformations": [
+            {
+               "id": "merge",
+               "options": { }
+            },
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": {
+                     "Time": true
+                  },
+                  "indexByName": {
+                     "Value #A": 1,
+                     "Value #B": 2,
+                     "Value #C": 3,
+                     "Value #D": 4,
+                     "node": 0
+                  },
+                  "renameByName": {
+                     "Value #A": "CPU Used (cores)",
+                     "Value #B": "CPU Total (cores)",
+                     "Value #C": "RAM Used (MiB)",
+                     "Value #D": "RAM Total (MiB)",
+                     "node": "Node"
+                  }
+               }
+            }
+         ],
+         "type": "table"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Active deployments per node (kube-state-metrics ReplicaSet owner join)",
+         "fieldConfig": {
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Deployment"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 260
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Namespace"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 180
+                     }
+                  ]
+               }
+            ]
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 29
+         },
+         "id": 5,
+         "options": {
+            "showHeader": true,
+            "sortBy": [
+               {
+                  "desc": false,
+                  "displayName": "Namespace"
+               }
+            ]
+         },
+         "pluginVersion": "v11.4.0",
+         "repeat": "hostname",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "count by (node, deployment, namespace) (\n  kube_pod_info{node=~\"$hostname\"}\n  * on(pod, namespace) group_left(deployment)\n  label_replace(\n    kube_pod_owner{owner_kind=\"ReplicaSet\"},\n    \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n  )\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "A"
+            }
+         ],
+         "title": "Deployments on Node — $hostname",
+         "transformations": [
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": {
+                     "Time": true,
+                     "Value #A": true
+                  },
+                  "indexByName": {
+                     "deployment": 2,
+                     "namespace": 1,
+                     "node": 0
+                  },
+                  "renameByName": {
+                     "deployment": "Deployment",
+                     "namespace": "Namespace",
+                     "node": "Node"
                   }
                }
             }
@@ -2104,9 +781,9 @@
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 76
+            "y": 38
          },
-         "id": 30,
+         "id": 6,
          "title": "Operational Health",
          "type": "row"
       },
@@ -2115,7 +792,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Power usage over time per device",
+         "description": "Power usage over time per device (filtered by selected nodes)",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -2150,9 +827,9 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 77
+            "y": 39
          },
-         "id": 31,
+         "id": 7,
          "options": {
             "legend": {
                "calcs": [
@@ -2175,7 +852,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (DCGM_FI_DEV_POWER_USAGE)",
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_POWER_USAGE{Hostname=~\"$hostname\"}\n)\n",
                "legendFormat": "{{Hostname}}-GPU{{gpu}}-MIG{{GPU_I_ID}}"
             }
          ],
@@ -2187,7 +864,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Temperature over time per device",
+         "description": "Temperature over time per device (filtered by selected nodes)",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -2230,9 +907,9 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 77
+            "y": 39
          },
-         "id": 32,
+         "id": 8,
          "options": {
             "legend": {
                "calcs": [
@@ -2255,7 +932,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (DCGM_FI_DEV_GPU_TEMP)",
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_GPU_TEMP{Hostname=~\"$hostname\"}\n)\n",
                "legendFormat": "{{Hostname}}-GPU{{gpu}}-MIG{{GPU_I_ID}}"
             }
          ],
@@ -2304,9 +981,9 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 85
+            "y": 48
          },
-         "id": 33,
+         "id": 9,
          "options": {
             "legend": {
                "calcs": [
@@ -2376,9 +1053,9 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 85
+            "y": 48
          },
-         "id": 34,
+         "id": 10,
          "options": {
             "legend": {
                "calcs": [
@@ -2406,6 +1083,1297 @@
             }
          ],
          "title": "SM Clock by GPU Model",
+         "type": "timeseries"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 57
+         },
+         "id": 11,
+         "title": "Device Load Analysis",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Top 10 GPU/MIG devices by GR engine active % (pure compute, no composite formula)",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": false,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "line"
+                  }
+               },
+               "max": 100,
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 60
+                     },
+                     {
+                        "color": "red",
+                        "value": 85
+                     }
+                  ]
+               },
+               "unit": "percent"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 58
+         },
+         "id": 12,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max",
+                  "last"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "topk(10,\n  avg by (gpu, GPU_I_ID, GPU_I_PROFILE, Hostname, modelName, UUID) (\n    DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100\n  )\n)\n",
+               "legendFormat": "{{Hostname}}-GPU{{gpu}}-{{GPU_I_PROFILE}}"
+            }
+         ],
+         "title": "Top 10 Devices by Compute %",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "GR engine active % per GPU/MIG device on this node",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": false,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "line"
+                  }
+               },
+               "max": 100,
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 60
+                     },
+                     {
+                        "color": "red",
+                        "value": 85
+                     }
+                  ]
+               },
+               "unit": "percent"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 67
+         },
+         "id": 13,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max",
+                  "last"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "repeat": "hostname",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, modelName, UUID) (\n  DCGM_FI_PROF_GR_ENGINE_ACTIVE{Hostname=~\"$hostname\"} * 100\n)\n",
+               "legendFormat": "{{modelName}} GPU{{gpu}} {{GPU_I_PROFILE}}"
+            }
+         ],
+         "title": "Compute % by Device — $hostname",
+         "type": "timeseries"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 76
+         },
+         "id": 14,
+         "title": "Memory Capacity Planning",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Total GPU memory capacity across all devices",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "thresholds"
+               },
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "blue",
+                        "value": null
+                     }
+                  ]
+               },
+               "unit": "decgbytes"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 0,
+            "y": 77
+         },
+         "id": 15,
+         "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum(DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE) / 1024",
+               "legendFormat": "Total Capacity"
+            }
+         ],
+         "title": "Total Memory Capacity",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Total GPU memory currently in use",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "thresholds"
+               },
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     }
+                  ]
+               },
+               "unit": "decgbytes"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 4,
+            "y": 77
+         },
+         "id": 16,
+         "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum(DCGM_FI_DEV_FB_USED) / 1024",
+               "legendFormat": "Used"
+            }
+         ],
+         "title": "Memory In Use",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Average VRAM utilization across all devices",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "thresholds"
+               },
+               "max": 100,
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 70
+                     },
+                     {
+                        "color": "red",
+                        "value": 85
+                     }
+                  ]
+               },
+               "unit": "percent"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 77
+         },
+         "id": 17,
+         "options": {
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            },
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg((DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE)) * 100)",
+               "legendFormat": "Avg Memory %"
+            }
+         ],
+         "title": "Avg Memory Utilization",
+         "type": "gauge"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Percentage of devices at risk of OOM (>85% VRAM)",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "thresholds"
+               },
+               "max": 100,
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 20
+                     },
+                     {
+                        "color": "red",
+                        "value": 40
+                     }
+                  ]
+               },
+               "unit": "percent"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 12,
+            "y": 77
+         },
+         "id": 18,
+         "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "(\n  count((DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE)) > 0.85)\n  /\n  count(DCGM_FI_DEV_FB_USED)\n) * 100 or vector(0)\n",
+               "legendFormat": "OOM Risk %"
+            }
+         ],
+         "title": "OOM Risk %",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Average temperature across all GPUs",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "thresholds"
+               },
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 70
+                     },
+                     {
+                        "color": "red",
+                        "value": 80
+                     }
+                  ]
+               },
+               "unit": "celsius"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 16,
+            "y": 77
+         },
+         "id": 19,
+         "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg(DCGM_FI_DEV_GPU_TEMP)",
+               "legendFormat": "Avg Temp"
+            }
+         ],
+         "title": "Avg Temperature",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Average power usage per device",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "thresholds"
+               },
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "orange",
+                        "value": null
+                     }
+                  ]
+               },
+               "unit": "watt"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 20,
+            "y": 77
+         },
+         "id": 20,
+         "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg(DCGM_FI_DEV_POWER_USAGE)",
+               "legendFormat": "Avg Power"
+            }
+         ],
+         "title": "Avg Power per Device",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "VRAM utilization per device on this node. Whole GPUs and MIG instances shown separately to avoid legend clutter.",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": false,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "line"
+                  }
+               },
+               "max": 100,
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 70
+                     },
+                     {
+                        "color": "red",
+                        "value": 85
+                     }
+                  ]
+               },
+               "unit": "percent"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 82
+         },
+         "id": 21,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max",
+                  "last"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "repeat": "hostname",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (gpu, Hostname, modelName, UUID) (\n  DCGM_FI_DEV_FB_USED{GPU_I_ID=\"\", Hostname=~\"$hostname\"}\n  / (DCGM_FI_DEV_FB_USED{GPU_I_ID=\"\", Hostname=~\"$hostname\"}\n     + DCGM_FI_DEV_FB_FREE{GPU_I_ID=\"\", Hostname=~\"$hostname\"}) * 100\n)\n",
+               "legendFormat": "{{modelName}} GPU{{gpu}}"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (gpu, GPU_I_ID, GPU_I_PROFILE, Hostname, modelName, UUID) (\n  DCGM_FI_DEV_FB_USED{GPU_I_ID!=\"\", Hostname=~\"$hostname\"}\n  / (DCGM_FI_DEV_FB_USED{GPU_I_ID!=\"\", Hostname=~\"$hostname\"}\n     + DCGM_FI_DEV_FB_FREE{GPU_I_ID!=\"\", Hostname=~\"$hostname\"}) * 100\n)\n",
+               "legendFormat": "{{modelName}} GPU{{gpu}} MIG{{GPU_I_ID}} ({{GPU_I_PROFILE}})"
+            }
+         ],
+         "title": "Memory Utilization % — $hostname",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "VRAM used per namespace on this node",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "unit": "decmbytes"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 91
+         },
+         "id": 22,
+         "options": {
+            "displayMode": "basic",
+            "orientation": "horizontal",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            },
+            "showUnfilled": true
+         },
+         "pluginVersion": "v11.4.0",
+         "repeat": "hostname",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (exported_namespace, Hostname) (\n  DCGM_FI_DEV_FB_USED{exported_pod!=\"\", Hostname=~\"$hostname\"}\n)\n",
+               "legendFormat": "{{exported_namespace}}"
+            }
+         ],
+         "title": "VRAM by Namespace — $hostname",
+         "type": "bargauge"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "VRAM used by workloads over time",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": false,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "off"
+                  }
+               },
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     }
+                  ]
+               },
+               "unit": "decmbytes"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 100
+         },
+         "id": 23,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (exported_pod, exported_namespace, Hostname, modelName) (DCGM_FI_DEV_FB_USED{exported_pod!=\"\"})",
+               "legendFormat": "{{Hostname}} / {{modelName}} / {{exported_pod}}"
+            }
+         ],
+         "title": "Workload Memory Over Time",
+         "type": "timeseries"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 109
+         },
+         "id": 24,
+         "title": "Deployment-Level Metrics (Node CPU & RAM)",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Node CPU (millicores) and RAM (MiB) usage per Kubernetes deployment. Source: kube-state-metrics + cAdvisor — not DCGM GPU metrics.",
+         "fieldConfig": {
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "CPU Used (m)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 130
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "short"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "CPU Requested (m)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 160
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "short"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "RAM Used (MiB)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "decmbytes"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "RAM Requested (MiB)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 165
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "decmbytes"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Deployment"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 260
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Namespace"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 180
+                     }
+                  ]
+               }
+            ]
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 110
+         },
+         "id": 25,
+         "options": {
+            "showHeader": true,
+            "sortBy": [
+               {
+                  "desc": true,
+                  "displayName": "RAM Used (MiB)"
+               }
+            ]
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (deployment, namespace) (\n  rate(container_cpu_usage_seconds_total{container!=\"\", container!=\"POD\"}[5m]) * 1000\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
+               "format": "table",
+               "instant": true,
+               "refId": "A"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (deployment, namespace) (\n  kube_pod_container_resource_requests{resource=\"cpu\", container!=\"\"}\n  * 1000\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
+               "format": "table",
+               "instant": true,
+               "refId": "B"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (deployment, namespace) (\n  container_memory_working_set_bytes{container!=\"\", container!=\"POD\"}\n  / (1024 * 1024)\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
+               "format": "table",
+               "instant": true,
+               "refId": "C"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (deployment, namespace) (\n  kube_pod_container_resource_requests{resource=\"memory\", container!=\"\"}\n  / (1024 * 1024)\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
+               "format": "table",
+               "instant": true,
+               "refId": "D"
+            }
+         ],
+         "title": "CPU & RAM by Deployment",
+         "transformations": [
+            {
+               "id": "merge",
+               "options": { }
+            },
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": {
+                     "Time": true
+                  },
+                  "indexByName": {
+                     "Value #A": 3,
+                     "Value #B": 4,
+                     "Value #C": 5,
+                     "Value #D": 6,
+                     "deployment": 1,
+                     "namespace": 2
+                  },
+                  "renameByName": {
+                     "Value #A": "CPU Used (m)",
+                     "Value #B": "CPU Requested (m)",
+                     "Value #C": "RAM Used (MiB)",
+                     "Value #D": "RAM Requested (MiB)",
+                     "deployment": "Deployment",
+                     "namespace": "Namespace"
+                  }
+               }
+            }
+         ],
+         "type": "table"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 121
+         },
+         "id": 26,
+         "title": "Workload Analysis",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Per-workload GPU usage. VRAM shown as Used/Total (MiB). GPU column removed; Node and GPU Model added.",
+         "fieldConfig": {
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Compute %"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.displayMode",
+                        "value": "gradient-gauge"
+                     },
+                     {
+                        "id": "custom.width",
+                        "value": 150
+                     },
+                     {
+                        "id": "max",
+                        "value": 100
+                     },
+                     {
+                        "id": "min",
+                        "value": 0
+                     },
+                     {
+                        "id": "thresholds",
+                        "value": {
+                           "steps": [
+                              {
+                                 "color": "green",
+                                 "value": null
+                              },
+                              {
+                                 "color": "#EAB839",
+                                 "value": 60
+                              },
+                              {
+                                 "color": "red",
+                                 "value": 85
+                              }
+                           ]
+                        }
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "VRAM Used (MiB)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "decmbytes"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "VRAM Total (MiB)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "decmbytes"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Workload"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 260
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Namespace"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 180
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Node"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 160
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "GPU Model"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 100
+                     }
+                  ]
+               }
+            ]
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 122
+         },
+         "id": 27,
+         "options": {
+            "showHeader": true,
+            "sortBy": [
+               {
+                  "desc": true,
+                  "displayName": "Compute %"
+               }
+            ]
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (\n  DCGM_FI_PROF_GR_ENGINE_ACTIVE{exported_pod!=\"\"} * 100\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "A"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (\n  DCGM_FI_DEV_FB_USED{exported_pod!=\"\"}\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "B"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (\n  DCGM_FI_DEV_FB_USED{exported_pod!=\"\"} + DCGM_FI_DEV_FB_FREE{exported_pod!=\"\"}\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "C"
+            }
+         ],
+         "title": "Workload GPU Usage",
+         "transformations": [
+            {
+               "id": "merge",
+               "options": { }
+            },
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": {
+                     "Time": true,
+                     "gpu": true
+                  },
+                  "indexByName": {
+                     "GPU_I_ID": 5,
+                     "Hostname": 3,
+                     "Value #A": 6,
+                     "Value #B": 7,
+                     "Value #C": 8,
+                     "exported_namespace": 2,
+                     "exported_pod": 1,
+                     "modelName": 4
+                  },
+                  "renameByName": {
+                     "GPU_I_ID": "MIG ID",
+                     "Hostname": "Node",
+                     "Value #A": "Compute %",
+                     "Value #B": "VRAM Used (MiB)",
+                     "Value #C": "VRAM Total (MiB)",
+                     "exported_namespace": "Namespace",
+                     "exported_pod": "Workload",
+                     "modelName": "GPU Model"
+                  }
+               }
+            }
+         ],
+         "type": "table"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "GPU compute activity per workload on this node (GR engine active %)",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 10,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": false,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "line"
+                  }
+               },
+               "max": 100,
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 60
+                     },
+                     {
+                        "color": "red",
+                        "value": 85
+                     }
+                  ]
+               },
+               "unit": "percent"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 133
+         },
+         "id": 28,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max",
+                  "last"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "repeat": "hostname",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (exported_pod, exported_namespace, Hostname, modelName, GPU_I_PROFILE) (\n  DCGM_FI_PROF_GR_ENGINE_ACTIVE{exported_pod!=\"\", Hostname=~\"$hostname\"} * 100\n)\n",
+               "legendFormat": "{{exported_namespace}}/{{exported_pod}} ({{GPU_I_PROFILE}})"
+            }
+         ],
+         "title": "Workload Compute % — $hostname",
          "type": "timeseries"
       }
    ],
@@ -2444,7 +2412,7 @@
                "type": "prometheus",
                "uid": "${datasource}"
             },
-            "includeAll": true,
+            "includeAll": false,
             "multi": true,
             "name": "hostname",
             "query": "label_values(DCGM_FI_DEV_FB_USED, Hostname)",

@@ -1,4 +1,6 @@
-// Row 5: Deployment-Level Metrics (kube-state-metrics)
+// Row 5 (new order): Deployment-Level Metrics (Node CPU & RAM)
+// Uses kube-state-metrics + cAdvisor — NOT DCGM GPU metrics.
+// Columns show actual node CPU (millicores) and RAM (MiB), not GPU compute/memory.
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local q = import '../queries.libsonnet';
 local t = import '../thresholds.libsonnet';
@@ -11,49 +13,73 @@ local ds = '${datasource}';
 
 {
   panels: [
-    row.new('Deployment-Level Metrics (kube-state-metrics)')
-    + row.withGridPos(52),
+    row.new('Deployment-Level Metrics (Node CPU & RAM)')
+    + row.withGridPos(109),
 
-    // GPU Usage by Deployment (table)
-    table.new('GPU Usage by Deployment')
-    + table.panelOptions.withDescription('Memory utilization by Kubernetes deployment')
-    + table.panelOptions.withGridPos(10, 24, 0, 53)
+    // CPU & RAM by Deployment (kube-state-metrics + cAdvisor join)
+    // Compute % and Memory % here refer to NODE resources, not GPU.
+    table.new('CPU & RAM by Deployment')
+    + table.panelOptions.withDescription('Node CPU (millicores) and RAM (MiB) usage per Kubernetes deployment. Source: kube-state-metrics + cAdvisor — not DCGM GPU metrics.')
+    + table.panelOptions.withGridPos(10, 24, 0, 110)
     + table.queryOptions.withTargets([
-      prometheus.new(ds, q.deploymentComputePct)
+      // A: CPU used (millicores)
+      prometheus.new(ds, q.deploymentCpuMillicores)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('A'),
 
-      prometheus.new(ds, q.deploymentMemoryPct)
+      // B: CPU requested (millicores)
+      prometheus.new(ds, q.deploymentCpuRequested)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('B'),
+
+      // C: RAM used (MiB)
+      prometheus.new(ds, q.deploymentRamMiB)
+      + prometheus.withFormat('table')
+      + prometheus.withInstant(true)
+      + prometheus.withRefId('C'),
+
+      // D: RAM requested (MiB)
+      prometheus.new(ds, q.deploymentRamRequestedMiB)
+      + prometheus.withFormat('table')
+      + prometheus.withInstant(true)
+      + prometheus.withRefId('D'),
     ])
     + table.options.withShowHeader(true)
-    + table.options.withSortBy([{ desc: true, displayName: 'Memory %' }])
+    + table.options.withSortBy([{ desc: true, displayName: 'RAM Used (MiB)' }])
     + table.standardOptions.withOverrides([
-      // Memory % column
-      table.standardOptions.override.byName.new('Memory %')
+      table.standardOptions.override.byName.new('CPU Used (m)')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
-        table.fieldConfig.defaults.custom.withDisplayMode('gradient-gauge')
-        + table.standardOptions.withMin(0)
-        + table.standardOptions.withMax(100)
-        + table.standardOptions.thresholds.withSteps(t.memory)
-        + table.fieldConfig.defaults.custom.withWidth(200)
+        table.standardOptions.withUnit('short')
+        + table.standardOptions.withDecimals(0)
+        + table.fieldConfig.defaults.custom.withWidth(130)
       ),
-      // Compute % column
-      table.standardOptions.override.byName.new('Compute %')
+      table.standardOptions.override.byName.new('CPU Requested (m)')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
-        table.fieldConfig.defaults.custom.withDisplayMode('gradient-gauge')
-        + table.standardOptions.withMin(0)
-        + table.standardOptions.withMax(100)
-        + table.standardOptions.thresholds.withSteps(t.compute)
-        + table.fieldConfig.defaults.custom.withWidth(200)
+        table.standardOptions.withUnit('short')
+        + table.standardOptions.withDecimals(0)
+        + table.fieldConfig.defaults.custom.withWidth(160)
       ),
-      // Deployment column width
+      table.standardOptions.override.byName.new('RAM Used (MiB)')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.standardOptions.withUnit('decmbytes')
+        + table.standardOptions.withDecimals(0)
+        + table.fieldConfig.defaults.custom.withWidth(140)
+      ),
+      table.standardOptions.override.byName.new('RAM Requested (MiB)')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.standardOptions.withUnit('decmbytes')
+        + table.standardOptions.withDecimals(0)
+        + table.fieldConfig.defaults.custom.withWidth(165)
+      ),
       table.standardOptions.override.byName.new('Deployment')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
-        table.fieldConfig.defaults.custom.withWidth(250)
+        table.fieldConfig.defaults.custom.withWidth(260)
+      ),
+      table.standardOptions.override.byName.new('Namespace')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.fieldConfig.defaults.custom.withWidth(180)
       ),
     ])
     + {
@@ -64,17 +90,20 @@ local ds = '${datasource}';
           options: {
             excludeByName: { Time: true },
             indexByName: {
-              Time: 0,
+              deployment: 1,
+              namespace: 2,
               'Value #A': 3,
               'Value #B': 4,
-              deployment: 1,
-              exported_namespace: 2,
+              'Value #C': 5,
+              'Value #D': 6,
             },
             renameByName: {
-              'Value #A': 'Compute %',
-              'Value #B': 'Memory %',
               deployment: 'Deployment',
-              exported_namespace: 'Namespace',
+              namespace: 'Namespace',
+              'Value #A': 'CPU Used (m)',
+              'Value #B': 'CPU Requested (m)',
+              'Value #C': 'RAM Used (MiB)',
+              'Value #D': 'RAM Requested (MiB)',
             },
           },
         },

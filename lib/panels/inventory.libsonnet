@@ -1,4 +1,5 @@
-// Row 6: Device Inventory & Health
+// Row 1 (new order): Device Inventory & Health
+// Per-node repeated tables + node CPU/RAM + deployments per node
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local q = import '../queries.libsonnet';
 local t = import '../thresholds.libsonnet';
@@ -12,68 +13,130 @@ local ds = '${datasource}';
 {
   panels: [
     row.new('Device Inventory & Health')
-    + row.withGridPos(63),
+    + row.withGridPos(0),
 
-    // Device Inventory & Status (table with 7 queries)
-    table.new('Device Inventory & Status')
-    + table.panelOptions.withDescription('Comprehensive device status table')
-    + table.panelOptions.withGridPos(12, 24, 0, 64)
+    // Device Workload Map (at-a-glance: blue=idle, green=active workload)
+    table.new('Device Workload Map')
+    + table.panelOptions.withDescription('At-a-glance device status: blue = idle, green = has active workload')
+    + table.panelOptions.withGridPos(8, 24, 0, 1)
     + table.queryOptions.withTargets([
-      // A: Composite load
-      prometheus.new(ds, q.inventoryLoad)
+      prometheus.new(ds, q.deviceWorkloadMap)
+      + prometheus.withFormat('table')
+      + prometheus.withInstant(true)
+      + prometheus.withRefId('A'),
+    ])
+    + table.options.withShowHeader(true)
+    + table.options.withSortBy([{ desc: false, displayName: 'Host' }])
+    + table.standardOptions.withOverrides([
+      table.standardOptions.override.byName.new('Status')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.fieldConfig.defaults.custom.withDisplayMode('color-background')
+        + table.standardOptions.withMin(0)
+        + table.standardOptions.withMax(1)
+        + table.standardOptions.color.withMode('thresholds')
+        + table.standardOptions.thresholds.withSteps(t.deviceStatus)
+        + table.fieldConfig.defaults.custom.withWidth(50)
+      )
+      + {
+        properties+: [{
+          id: 'mappings',
+          value: [{
+            type: 'value',
+            options: {
+              '0': { text: '■', index: 0 },
+              '1': { text: '■', index: 1 },
+            },
+          }],
+        }],
+      },
+      table.standardOptions.override.byName.new('Workload')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.fieldConfig.defaults.custom.withWidth(220)
+      ),
+      table.standardOptions.override.byName.new('Host')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.fieldConfig.defaults.custom.withWidth(160)
+      ),
+      table.standardOptions.override.byName.new('Model')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.fieldConfig.defaults.custom.withWidth(120)
+      ),
+    ])
+    + {
+      transformations: [
+        {
+          id: 'organize',
+          options: {
+            excludeByName: { Time: true, UUID: true, GPU_I_ID: true },
+            indexByName: {
+              Hostname: 0,
+              modelName: 1,
+              GPU_I_PROFILE: 2,
+              gpu: 3,
+              'Value #A': 4,
+              exported_pod: 5,
+            },
+            renameByName: {
+              Hostname: 'Host',
+              modelName: 'Model',
+              GPU_I_PROFILE: 'Profile',
+              gpu: 'GPU',
+              'Value #A': 'Status',
+              exported_pod: 'Workload',
+            },
+          },
+        },
+      ],
+    },
+
+    // Device Inventory & Status — repeated per node
+    // Queries filtered by Hostname=~"$hostname"; repeat generates one panel per node.
+    // RefIds after removing composite load: A=Compute, B=MemoryPct, C=UsedGB, D=TotalGB, E=Power, F=Temp
+    table.new('Device Inventory & Status — $hostname')
+    + table.panelOptions.withDescription('Per-node GPU device inventory. Sorted by compute utilization.')
+    + table.panelOptions.withGridPos(12, 24, 0, 10)
+    + table.panelOptions.withRepeat('hostname')
+    + table.queryOptions.withTargets([
+      // A: Compute % (also brings modelName + GPU_I_PROFILE into the merge)
+      prometheus.new(ds, q.inventoryComputePct)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('A'),
 
-      // B: Compute %
-      prometheus.new(ds, q.inventoryComputePct)
+      // B: Memory %
+      prometheus.new(ds, q.inventoryMemoryPct)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('B'),
 
-      // C: Memory %
-      prometheus.new(ds, q.inventoryMemoryPct)
+      // C: VRAM used (GB)
+      prometheus.new(ds, q.inventoryUsedGB)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('C'),
 
-      // D: Used memory (GB)
-      prometheus.new(ds, q.inventoryUsedGB)
+      // D: VRAM total (GB)
+      prometheus.new(ds, q.inventoryTotalGB)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('D'),
 
-      // E: Total memory (GB)
-      prometheus.new(ds, q.inventoryTotalGB)
+      // E: Power (W)
+      prometheus.new(ds, q.inventoryPower)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('E'),
 
-      // F: Power usage
-      prometheus.new(ds, q.inventoryPower)
-      + prometheus.withFormat('table')
-      + prometheus.withInstant(true)
-      + prometheus.withRefId('F'),
-
-      // G: Temperature
+      // F: Temperature (C)
       prometheus.new(ds, q.inventoryTemp)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
-      + prometheus.withRefId('G'),
+      + prometheus.withRefId('F'),
     ])
     + table.options.withShowHeader(true)
-    + table.options.withSortBy([{ desc: true, displayName: 'Load %' }])
+    + table.options.withSortBy([{ desc: true, displayName: 'Compute %' }])
     + table.standardOptions.withOverrides([
-      // Load % - gradient gauge
-      table.standardOptions.override.byName.new('Load %')
-      + table.standardOptions.override.byName.withPropertiesFromOptions(
-        table.fieldConfig.defaults.custom.withDisplayMode('gradient-gauge')
-        + table.standardOptions.withMin(0)
-        + table.standardOptions.withMax(100)
-        + table.standardOptions.thresholds.withSteps(t.compute)
-        + table.fieldConfig.defaults.custom.withWidth(150)
-      ),
-      // Compute % - color background
+      // Compute % — color background
       table.standardOptions.override.byName.new('Compute %')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
         table.fieldConfig.defaults.custom.withDisplayMode('color-background')
@@ -81,7 +144,7 @@ local ds = '${datasource}';
         + table.standardOptions.withMax(100)
         + table.standardOptions.thresholds.withSteps(t.tableBgCompute)
       ),
-      // Memory % - color background
+      // Memory % — color background
       table.standardOptions.override.byName.new('Memory %')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
         table.fieldConfig.defaults.custom.withDisplayMode('color-background')
@@ -89,14 +152,14 @@ local ds = '${datasource}';
         + table.standardOptions.withMax(100)
         + table.standardOptions.thresholds.withSteps(t.tableBgMemory)
       ),
-      // Used (GB)
-      table.standardOptions.override.byName.new('Used (GB)')
+      // VRAM Used (GB)
+      table.standardOptions.override.byName.new('VRAM Used (GB)')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
         table.standardOptions.withUnit('decgbytes')
         + table.standardOptions.withDecimals(1)
       ),
-      // Total (GB)
-      table.standardOptions.override.byName.new('Total (GB)')
+      // VRAM Total (GB)
+      table.standardOptions.override.byName.new('VRAM Total (GB)')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
         table.standardOptions.withUnit('decgbytes')
         + table.standardOptions.withDecimals(1)
@@ -107,7 +170,7 @@ local ds = '${datasource}';
         table.standardOptions.withUnit('watt')
         + table.standardOptions.withDecimals(0)
       ),
-      // Temp (C) - with color background
+      // Temp (C) — color background
       table.standardOptions.override.byName.new('Temp (C)')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
         table.standardOptions.withUnit('celsius')
@@ -115,12 +178,10 @@ local ds = '${datasource}';
         + table.fieldConfig.defaults.custom.withDisplayMode('color-background')
         + table.standardOptions.thresholds.withSteps(t.tableBgTemperature)
       ),
-      // Model column width
       table.standardOptions.override.byName.new('Model')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
-        table.fieldConfig.defaults.custom.withWidth(150)
+        table.fieldConfig.defaults.custom.withWidth(130)
       ),
-      // Host column width
       table.standardOptions.override.byName.new('Host')
       + table.standardOptions.override.byName.withPropertiesFromOptions(
         table.fieldConfig.defaults.custom.withWidth(150)
@@ -134,34 +195,160 @@ local ds = '${datasource}';
           options: {
             excludeByName: { Time: true, UUID: true },
             indexByName: {
+              Hostname: 0,
+              gpu: 1,
               GPU_I_ID: 2,
               GPU_I_PROFILE: 3,
-              Hostname: 0,
-              UUID: 13,
+              modelName: 4,
               'Value #A': 5,
               'Value #B': 6,
               'Value #C': 7,
               'Value #D': 8,
               'Value #E': 9,
               'Value #F': 10,
-              'Value #G': 11,
-              gpu: 1,
-              modelName: 4,
             },
             renameByName: {
+              Hostname: 'Host',
+              gpu: 'GPU',
               GPU_I_ID: 'MIG ID',
               GPU_I_PROFILE: 'Profile',
-              Hostname: 'Host',
-              UUID: '',
-              'Value #A': 'Load %',
-              'Value #B': 'Compute %',
-              'Value #C': 'Memory %',
-              'Value #D': 'Used (GB)',
-              'Value #E': 'Total (GB)',
-              'Value #F': 'Power (W)',
-              'Value #G': 'Temp (C)',
-              gpu: 'GPU',
               modelName: 'Model',
+              'Value #A': 'Compute %',
+              'Value #B': 'Memory %',
+              'Value #C': 'VRAM Used (GB)',
+              'Value #D': 'VRAM Total (GB)',
+              'Value #E': 'Power (W)',
+              'Value #F': 'Temp (C)',
+            },
+          },
+        },
+      ],
+    },
+
+    // Node CPU & RAM — repeated per node
+    // Note: kube-state-metrics uses "node" label; ensure $hostname values match node names.
+    table.new('Node Resources — $hostname')
+    + table.panelOptions.withDescription('Node CPU and RAM from kube-state-metrics / cAdvisor. Node label must match $hostname.')
+    + table.panelOptions.withGridPos(5, 24, 0, 23)
+    + table.panelOptions.withRepeat('hostname')
+    + table.queryOptions.withTargets([
+      // A: CPU used (cores)
+      prometheus.new(ds, q.nodeCpuUsedCores)
+      + prometheus.withFormat('table')
+      + prometheus.withInstant(true)
+      + prometheus.withRefId('A'),
+
+      // B: CPU allocatable (cores)
+      prometheus.new(ds, q.nodeCpuAllocatable)
+      + prometheus.withFormat('table')
+      + prometheus.withInstant(true)
+      + prometheus.withRefId('B'),
+
+      // C: RAM used (MiB)
+      prometheus.new(ds, q.nodeRamUsedMiB)
+      + prometheus.withFormat('table')
+      + prometheus.withInstant(true)
+      + prometheus.withRefId('C'),
+
+      // D: RAM total (MiB)
+      prometheus.new(ds, q.nodeRamTotalMiB)
+      + prometheus.withFormat('table')
+      + prometheus.withInstant(true)
+      + prometheus.withRefId('D'),
+    ])
+    + table.options.withShowHeader(true)
+    + table.standardOptions.withOverrides([
+      table.standardOptions.override.byName.new('CPU Used (cores)')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.standardOptions.withDecimals(2)
+        + table.fieldConfig.defaults.custom.withWidth(140)
+      ),
+      table.standardOptions.override.byName.new('CPU Total (cores)')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.standardOptions.withDecimals(0)
+        + table.fieldConfig.defaults.custom.withWidth(140)
+      ),
+      table.standardOptions.override.byName.new('RAM Used (MiB)')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.standardOptions.withUnit('decmbytes')
+        + table.standardOptions.withDecimals(0)
+        + table.fieldConfig.defaults.custom.withWidth(140)
+      ),
+      table.standardOptions.override.byName.new('RAM Total (MiB)')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.standardOptions.withUnit('decmbytes')
+        + table.standardOptions.withDecimals(0)
+        + table.fieldConfig.defaults.custom.withWidth(140)
+      ),
+      table.standardOptions.override.byName.new('Node')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.fieldConfig.defaults.custom.withWidth(180)
+      ),
+    ])
+    + {
+      transformations: [
+        { id: 'merge', options: {} },
+        {
+          id: 'organize',
+          options: {
+            excludeByName: { Time: true },
+            indexByName: {
+              node: 0,
+              'Value #A': 1,
+              'Value #B': 2,
+              'Value #C': 3,
+              'Value #D': 4,
+            },
+            renameByName: {
+              node: 'Node',
+              'Value #A': 'CPU Used (cores)',
+              'Value #B': 'CPU Total (cores)',
+              'Value #C': 'RAM Used (MiB)',
+              'Value #D': 'RAM Total (MiB)',
+            },
+          },
+        },
+      ],
+    },
+
+    // Deployments on Node — repeated per node
+    table.new('Deployments on Node — $hostname')
+    + table.panelOptions.withDescription('Active deployments per node (kube-state-metrics ReplicaSet owner join)')
+    + table.panelOptions.withGridPos(8, 24, 0, 29)
+    + table.panelOptions.withRepeat('hostname')
+    + table.queryOptions.withTargets([
+      prometheus.new(ds, q.deploymentsPerNode)
+      + prometheus.withFormat('table')
+      + prometheus.withInstant(true)
+      + prometheus.withRefId('A'),
+    ])
+    + table.options.withShowHeader(true)
+    + table.options.withSortBy([{ desc: false, displayName: 'Namespace' }])
+    + table.standardOptions.withOverrides([
+      table.standardOptions.override.byName.new('Deployment')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.fieldConfig.defaults.custom.withWidth(260)
+      ),
+      table.standardOptions.override.byName.new('Namespace')
+      + table.standardOptions.override.byName.withPropertiesFromOptions(
+        table.fieldConfig.defaults.custom.withWidth(180)
+      ),
+    ])
+    + {
+      transformations: [
+        {
+          id: 'organize',
+          options: {
+            excludeByName: { Time: true, 'Value #A': true },
+            indexByName: {
+              node: 0,
+              namespace: 1,
+              deployment: 2,
+            },
+            renameByName: {
+              node: 'Node',
+              namespace: 'Namespace',
+              deployment: 'Deployment',
             },
           },
         },

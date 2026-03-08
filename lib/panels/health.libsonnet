@@ -1,4 +1,5 @@
-// Row 7: Operational Health
+// Row 2 (new order): Operational Health
+// Power and temperature filtered by $hostname; tensor/SM clock are cluster-wide.
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonnet';
 local q = import '../queries.libsonnet';
 local t = import '../thresholds.libsonnet';
@@ -21,12 +22,12 @@ local tsDefaults =
 {
   panels: [
     row.new('Operational Health')
-    + row.withGridPos(76),
+    + row.withGridPos(38),
 
-    // Power Usage by Device
+    // Power Usage by Device — filtered by $hostname
     timeSeries.new('Power Usage by Device')
-    + timeSeries.panelOptions.withDescription('Power usage over time per device')
-    + timeSeries.panelOptions.withGridPos(8, 12, 0, 77)
+    + timeSeries.panelOptions.withDescription('Power usage over time per device (filtered by selected nodes)')
+    + timeSeries.panelOptions.withGridPos(8, 12, 0, 39)
     + timeSeries.queryOptions.withTargets([
       prometheus.new(ds, q.powerByDevice)
       + prometheus.withLegendFormat('{{Hostname}}-GPU{{gpu}}-MIG{{GPU_I_ID}}'),
@@ -43,10 +44,10 @@ local tsDefaults =
     + timeSeries.options.tooltip.withMode('multi')
     + timeSeries.options.tooltip.withSort('desc'),
 
-    // Temperature by Device
+    // Temperature by Device — filtered by $hostname
     timeSeries.new('Temperature by Device')
-    + timeSeries.panelOptions.withDescription('Temperature over time per device')
-    + timeSeries.panelOptions.withGridPos(8, 12, 12, 77)
+    + timeSeries.panelOptions.withDescription('Temperature over time per device (filtered by selected nodes)')
+    + timeSeries.panelOptions.withGridPos(8, 12, 12, 39)
     + timeSeries.queryOptions.withTargets([
       prometheus.new(ds, q.temperatureByDevice)
       + prometheus.withLegendFormat('{{Hostname}}-GPU{{gpu}}-MIG{{GPU_I_ID}}'),
@@ -63,10 +64,10 @@ local tsDefaults =
     + timeSeries.options.tooltip.withMode('multi')
     + timeSeries.options.tooltip.withSort('desc'),
 
-    // Tensor Utilization by Workload
+    // Tensor Utilization by Workload — cluster-wide
     timeSeries.new('Tensor Utilization by Workload')
     + timeSeries.panelOptions.withDescription('Tensor core utilization per workload')
-    + timeSeries.panelOptions.withGridPos(8, 12, 0, 85)
+    + timeSeries.panelOptions.withGridPos(8, 12, 0, 48)
     + timeSeries.queryOptions.withTargets([
       prometheus.new(ds, q.tensorUtilByWorkload)
       + prometheus.withLegendFormat('{{exported_pod}}'),
@@ -85,10 +86,10 @@ local tsDefaults =
     + timeSeries.options.tooltip.withMode('multi')
     + timeSeries.options.tooltip.withSort('desc'),
 
-    // SM Clock by GPU Model
+    // SM Clock by GPU Model — cluster-wide
     timeSeries.new('SM Clock by GPU Model')
     + timeSeries.panelOptions.withDescription('SM Clock frequency by GPU model')
-    + timeSeries.panelOptions.withGridPos(8, 12, 12, 85)
+    + timeSeries.panelOptions.withGridPos(8, 12, 12, 48)
     + timeSeries.queryOptions.withTargets([
       prometheus.new(ds, q.smClockByModel)
       + prometheus.withLegendFormat('{{modelName}}'),

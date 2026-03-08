@@ -6,9 +6,19 @@ OUTPUT_DIR ?= output
 
 .PHONY: build fmt lint clean
 
-build: $(OUTPUT_DIR)/gpu-capacity-planning-dashboard.json
+build: $(OUTPUT_DIR)/gpu-capacity-planning-dashboard.json $(OUTPUT_DIR)/gpu-weekly-report-dashboard.json $(OUTPUT_DIR)/gpu-util-intelligence-dashboard.json
 
 $(OUTPUT_DIR)/gpu-capacity-planning-dashboard.json: dashboards/gpu-capacity-planning.jsonnet $(wildcard lib/*.libsonnet lib/**/*.libsonnet)
+	@mkdir -p $(OUTPUT_DIR)
+	$(JSONNET_BIN) $(JSONNET_ARGS) $< > $@
+	@echo "Built $@"
+
+$(OUTPUT_DIR)/gpu-util-intelligence-dashboard.json: dashboards/gpu-util-intelligence.jsonnet $(wildcard lib/*.libsonnet lib/**/*.libsonnet)
+	@mkdir -p $(OUTPUT_DIR)
+	$(JSONNET_BIN) $(JSONNET_ARGS) $< > $@
+	@echo "Built $@"
+
+$(OUTPUT_DIR)/gpu-weekly-report-dashboard.json: dashboards/gpu-weekly-report.jsonnet $(wildcard lib/*.libsonnet lib/**/*.libsonnet)
 	@mkdir -p $(OUTPUT_DIR)
 	$(JSONNET_BIN) $(JSONNET_ARGS) $< > $@
 	@echo "Built $@"
