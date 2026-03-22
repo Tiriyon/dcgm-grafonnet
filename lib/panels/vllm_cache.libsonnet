@@ -57,13 +57,13 @@ local hitRateThresholds = [
     + gauge.options.withShowThresholdMarkers(true)
     + gauge.options.reduceOptions.withCalcs(['lastNotNull']),
 
-    // CPU KV cache utilization gauge
-    gauge.new('CPU KV Cache Usage')
-    + gauge.panelOptions.withDescription('CPU KV cache utilization (0–1). Only meaningful when CPU offloading is enabled. Non-zero = GPU cache has been full at least once.')
+    // KV cache peak over the last 15 minutes — shows pressure even if current value dropped
+    gauge.new('KV Cache Peak (15m)')
+    + gauge.panelOptions.withDescription('Peak GPU KV cache utilization over the last 15 minutes. Catches transient saturation spikes that the current-value gauge misses. Above 0.85 = preemption risk was present.')
     + gauge.panelOptions.withGridPos(8, 6, 6, 7)
     + gauge.queryOptions.withTargets([
-      prometheus.new(ds, q.cpuCacheUsage)
-      + prometheus.withLegendFormat('CPU Cache'),
+      prometheus.new(ds, q.gpuCachePeak)
+      + prometheus.withLegendFormat('Peak'),
     ])
     + gauge.standardOptions.withUnit('percentunit')
     + gauge.standardOptions.withMin(0)

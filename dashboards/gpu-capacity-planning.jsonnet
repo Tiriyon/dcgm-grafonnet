@@ -6,13 +6,13 @@ local g = import 'github.com/grafana/grafonnet/gen/grafonnet-latest/main.libsonn
 // Panel sections (each exports { panels: [...] })
 // Cluster Overview KPIs removed (v0.2.0).
 // vLLM inference capacity layer added (v0.3.0).
-local memory = import '../lib/panels/memory.libsonnet';
-local load = import '../lib/panels/load.libsonnet';
-local workload = import '../lib/panels/workload.libsonnet';
+// vLLM inference capacity layer removed (v0.4.0)
 local deployment = import '../lib/panels/deployment.libsonnet';
-local inventory = import '../lib/panels/inventory.libsonnet';
 local health = import '../lib/panels/health.libsonnet';
-local vllmCapacity = import '../lib/panels/vllm_capacity.libsonnet';
+local inventory = import '../lib/panels/inventory.libsonnet';
+local load = import '../lib/panels/load.libsonnet';
+local memory = import '../lib/panels/memory.libsonnet';
+local workload = import '../lib/panels/workload.libsonnet';
 
 // --- Variables ---
 local var = g.dashboard.variable;
@@ -49,24 +49,11 @@ local gpuModelVar =
   + var.query.withSort(1)
   + var.query.refresh.onTime();
 
-// AI model served by vLLM — filters the Inference Capacity section only.
-// Defaults to All; DCGM panels ignore this variable entirely.
-// Not filtered by $namespace: the $namespace variable is sourced from DCGM
-// exported_namespace which may differ from the namespace where vLLM pods run.
-local modelNameVar =
-  var.query.new('model_name')
-  + var.query.withDatasource('prometheus', '${datasource}')
-  + var.query.queryTypes.withLabelValues('model_name', 'vllm:num_requests_running')
-  + var.query.selectionOptions.withMulti(true)
-  + var.query.selectionOptions.withIncludeAll(true)
-  + var.query.withSort(1)
-  + var.query.refresh.onTime();
-
 // --- Dashboard ---
 g.dashboard.new('GPU Capacity Planning Dashboard')
 + g.dashboard.withUid('gpu-capacity-planning')
-+ g.dashboard.withDescription('AI Workload Capacity Planning — stack-level ordering: Nodes → Platform → Namespace → Workload → Inference Capacity')
-+ g.dashboard.withTags(['gpu', 'capacity-planning', 'mig', 'dcgm', 'ai-workloads', 'memory', 'vllm'])
++ g.dashboard.withDescription('AI Workload Capacity Planning — stack-level ordering: Nodes → Platform → Namespace → Workload')
++ g.dashboard.withTags(['gpu', 'capacity-planning', 'mig', 'dcgm', 'ai-workloads', 'memory'])
 + g.dashboard.withEditable(true)
 + g.dashboard.withLiveNow(true)
 + g.dashboard.time.withFrom('now-6h')
@@ -80,15 +67,13 @@ g.dashboard.new('GPU Capacity Planning Dashboard')
   namespaceVar,
   hostnameVar,
   gpuModelVar,
-  modelNameVar,
 ])
 + g.dashboard.withPanels(
   // Stack-level order: bottom → top
-  inventory.panels        // 1. Nodes     — GPU device inventory, node CPU/RAM, deployments per node
-  + health.panels         // 2. Platform  — operational health (power, temp, tensor, SM clock)
-  + load.panels           // 3. Platform  — device compute load per node
-  + memory.panels         // 4. Memory    — VRAM capacity planning per node + namespace
-  + deployment.panels     // 5. Namespace — CPU & RAM by deployment (kube-state-metrics)
-  + workload.panels       // 6. Workload  — per-workload GPU usage table + compute over time
-  + vllmCapacity.panels   // 7. Inference — cross-layer: saturation mode, KV cache OOM risk, tok/GPU/s
+  inventory.panels  // 1. Nodes     — GPU device inventory, node CPU/RAM, deployments per node
+  + health.panels  // 2. Platform  — operational health (power, temp, tensor, SM clock)
+  + load.panels  // 3. Platform  — device compute load per node
+  + memory.panels  // 4. Memory    — VRAM capacity planning per node + namespace
+  + deployment.panels  // 5. Namespace — CPU & RAM by deployment (kube-state-metrics)
+  + workload.panels  // 6. Workload  — per-workload GPU usage table + compute over time
 )

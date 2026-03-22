@@ -367,55 +367,54 @@
   |||,
 
   // --- vLLM Inference Capacity (used by vllm_capacity.libsonnet) ---
-  // All queries filter by $model_name only — no namespace filter.
-  // The $namespace variable in the capacity planning dashboard is sourced from
-  // DCGM exported_namespace which may differ from the vLLM pod namespace.
-  // The DCGM queries in this section (avgGrEngineActivePct, avgVramUtil) are reused as-is.
+  // $namespace = Kubernetes namespace of the vLLM pods.
+  // $model_name = served AI model (vllm label, not DCGM modelName).
+  // DCGM cross-layer queries (avgGrEngineActivePct, avgVramUtil) are reused as-is above.
 
-  // Output tokens generated per second across all selected models
+  // Output tokens generated per second
   vllmGenTokenRate: |||
     sum(
-      rate(vllm:generation_tokens_total{model_name=~"$model_name"}[5m])
+      rate(vllm:generation_tokens{namespace=~"$namespace", model_name=~"$model_name"}[5m])
     )
   |||,
 
   // Requests currently being decoded
   vllmRequestsRunning:
-    'sum(vllm:num_requests_running{model_name=~"$model_name"})',
+    'sum(vllm:num_requests_running{namespace=~"$namespace", model_name=~"$model_name"})',
 
   // Requests waiting in the scheduler queue
   vllmRequestsWaiting:
-    'sum(vllm:num_requests_waiting{model_name=~"$model_name"})',
+    'sum(vllm:num_requests_waiting{namespace=~"$namespace", model_name=~"$model_name"})',
 
-  // Requests preempted to CPU KV cache (non-zero = GPU KV cache overflow)
-  vllmRequestsSwapped:
-    'sum(vllm:num_requests_swapped{model_name=~"$model_name"})',
+  // Total concurrent requests (running + waiting) — single load-pressure signal.
+  // Replaces the per-version vllm:num_requests_swapped which is not universally exposed.
+  vllmTotalRequests: |||
+    sum(vllm:num_requests_running{namespace=~"$namespace", model_name=~"$model_name"})
+    + sum(vllm:num_requests_waiting{namespace=~"$namespace", model_name=~"$model_name"})
+  |||,
 
   // GPU KV cache utilization as 0–100% (metric native range is 0–1)
   vllmKvCachePct:
-    'avg(vllm:gpu_cache_usage_perc{model_name=~"$model_name"}) * 100',
+    'avg(vllm:kv_cache_usage_perc{namespace=~"$namespace", model_name=~"$model_name"}) * 100',
 
-  // Prefix cache hit rate — safe division: denominator filtered with > 0
-  // so the result is no-data (not NaN) when no prefix queries arrive in the window.
-  // Requires vLLM v0.14+; panels show no data gracefully on older builds.
+  // Prefix cache hit rate — safe division, no-data when prefix caching is disabled.
   vllmPrefixCacheHitRate: |||
     sum(
-      rate(vllm:prefix_cache_hits_total{model_name=~"$model_name"}[5m])
+      rate(vllm:prefix_cache_hits{namespace=~"$namespace", model_name=~"$model_name"}[5m])
     )
     /
     (
       sum(
-        rate(vllm:prefix_cache_queries_total{model_name=~"$model_name"}[5m])
+        rate(vllm:prefix_cache_queries{namespace=~"$namespace", model_name=~"$model_name"}[5m])
       ) > 0
     )
   |||,
 
   // Generation tokens per second divided by active GPU count.
-  // Unit-economics metric: productive output per GPU.
-  // Numerator: vLLM gen token rate. Denominator: DCGM active device count.
+  // DCGM denominator is cluster-wide — GPU devices carry no Kubernetes namespace label.
   vllmTokensPerGpu: |||
     sum(
-      rate(vllm:generation_tokens_total{model_name=~"$model_name"}[5m])
+      rate(vllm:generation_tokens{namespace=~"$namespace", model_name=~"$model_name"}[5m])
     )
     /
     count(DCGM_FI_DEV_FB_USED > 0)

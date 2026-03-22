@@ -73,7 +73,7 @@ local tsDefaults =
     + timeSeries.options.tooltip.withMode('multi')
     + timeSeries.options.tooltip.withSort('desc'),
 
-    // Prompt length distribution over time
+    // Prompt length distribution over time — step interpolation reflects discrete per-request samples
     timeSeries.new('Prompt Length Distribution (tokens)')
     + timeSeries.panelOptions.withDescription('P50 / P95 prompt token count. Long prompts drive higher TTFT and VRAM usage. Growing P95 = context is getting longer over time.')
     + timeSeries.panelOptions.withGridPos(8, 12, 0, 50)
@@ -88,6 +88,8 @@ local tsDefaults =
     + timeSeries.standardOptions.color.withMode('palette-classic')
     + timeSeries.standardOptions.thresholds.withSteps(t.singleColor('purple'))
     + tsDefaults
+    + timeSeries.fieldConfig.defaults.custom.withLineInterpolation('stepAfter')
+    + timeSeries.fieldConfig.defaults.custom.withShowPoints('always')
     + timeSeries.fieldConfig.defaults.custom.thresholdsStyle.withMode('off')
     + timeSeries.options.legend.withDisplayMode('table')
     + timeSeries.options.legend.withPlacement('right')
@@ -98,7 +100,7 @@ local tsDefaults =
     + timeSeries.options.tooltip.withMode('multi')
     + timeSeries.options.tooltip.withSort('desc'),
 
-    // Output length distribution over time
+    // Output length distribution over time — step interpolation reflects discrete per-request samples
     timeSeries.new('Output Length Distribution (tokens)')
     + timeSeries.panelOptions.withDescription('P50 / P95 output token count. Drives TPOT and total GPU time per request. Growing P95 = users triggering longer generation.')
     + timeSeries.panelOptions.withGridPos(8, 12, 12, 50)
@@ -113,6 +115,8 @@ local tsDefaults =
     + timeSeries.standardOptions.color.withMode('palette-classic')
     + timeSeries.standardOptions.thresholds.withSteps(t.singleColor('orange'))
     + tsDefaults
+    + timeSeries.fieldConfig.defaults.custom.withLineInterpolation('stepAfter')
+    + timeSeries.fieldConfig.defaults.custom.withShowPoints('always')
     + timeSeries.fieldConfig.defaults.custom.thresholdsStyle.withMode('off')
     + timeSeries.options.legend.withDisplayMode('table')
     + timeSeries.options.legend.withPlacement('right')

@@ -133,23 +133,72 @@ local e2eThresholds = [
     + stat.options.withGraphMode('none')
     + stat.options.reduceOptions.withCalcs(['lastNotNull']),
 
-    // TTFT over time — P50 / P95 / P99 per model
-    timeSeries.new('Time to First Token Over Time')
-    + timeSeries.panelOptions.withDescription('TTFT percentiles over time. Spikes indicate compute-heavy prefill (long prompts, heavy load). Sustained elevation = need more GPU capacity or shorter context limits.')
-    + timeSeries.panelOptions.withGridPos(8, 12, 0, 22)
+    // TTFT P50 over time — one percentile per panel for clarity
+    timeSeries.new('TTFT P50 Over Time')
+    + timeSeries.panelOptions.withDescription('Median TTFT (prefill latency) over time per model. Baseline signal — if P50 is elevated, the cluster is broadly under compute pressure.')
+    + timeSeries.panelOptions.withGridPos(8, 8, 0, 22)
     + timeSeries.queryOptions.withTargets([
       prometheus.new(ds, q.ttftP50OverTime)
-      + prometheus.withLegendFormat('P50 {{model_name}}'),
-      prometheus.new(ds, q.ttftP95OverTime)
-      + prometheus.withLegendFormat('P95 {{model_name}}'),
-      prometheus.new(ds, q.ttftP99OverTime)
-      + prometheus.withLegendFormat('P99 {{model_name}}'),
+      + prometheus.withLegendFormat('{{model_name}}'),
     ])
     + timeSeries.standardOptions.withUnit('s')
     + timeSeries.standardOptions.withMin(0)
     + timeSeries.standardOptions.color.withMode('palette-classic')
     + timeSeries.standardOptions.thresholds.withSteps(ttftThresholds)
     + tsDefaults
+    + timeSeries.fieldConfig.defaults.custom.withLineInterpolation('linear')
+    + timeSeries.fieldConfig.defaults.custom.withShowPoints('always')
+    + timeSeries.fieldConfig.defaults.custom.withSpanNulls(true)
+    + timeSeries.fieldConfig.defaults.custom.thresholdsStyle.withMode('line')
+    + timeSeries.options.legend.withDisplayMode('table')
+    + timeSeries.options.legend.withPlacement('right')
+    + timeSeries.options.legend.withShowLegend(true)
+    + timeSeries.options.legend.withCalcs(['mean', 'max', 'last'])
+    + timeSeries.options.legend.withSortBy('Last')
+    + timeSeries.options.legend.withSortDesc(true)
+    + timeSeries.options.tooltip.withMode('multi')
+    + timeSeries.options.tooltip.withSort('desc'),
+
+    timeSeries.new('TTFT P95 Over Time')
+    + timeSeries.panelOptions.withDescription('95th percentile TTFT over time per model. First tail signal to watch — spikes here before P99 indicate prefill contention starting.')
+    + timeSeries.panelOptions.withGridPos(8, 8, 8, 22)
+    + timeSeries.queryOptions.withTargets([
+      prometheus.new(ds, q.ttftP95OverTime)
+      + prometheus.withLegendFormat('{{model_name}}'),
+    ])
+    + timeSeries.standardOptions.withUnit('s')
+    + timeSeries.standardOptions.withMin(0)
+    + timeSeries.standardOptions.color.withMode('palette-classic')
+    + timeSeries.standardOptions.thresholds.withSteps(ttftThresholds)
+    + tsDefaults
+    + timeSeries.fieldConfig.defaults.custom.withLineInterpolation('linear')
+    + timeSeries.fieldConfig.defaults.custom.withShowPoints('always')
+    + timeSeries.fieldConfig.defaults.custom.withSpanNulls(true)
+    + timeSeries.fieldConfig.defaults.custom.thresholdsStyle.withMode('line')
+    + timeSeries.options.legend.withDisplayMode('table')
+    + timeSeries.options.legend.withPlacement('right')
+    + timeSeries.options.legend.withShowLegend(true)
+    + timeSeries.options.legend.withCalcs(['mean', 'max', 'last'])
+    + timeSeries.options.legend.withSortBy('Last')
+    + timeSeries.options.legend.withSortDesc(true)
+    + timeSeries.options.tooltip.withMode('multi')
+    + timeSeries.options.tooltip.withSort('desc'),
+
+    timeSeries.new('TTFT P99 Over Time')
+    + timeSeries.panelOptions.withDescription('99th percentile TTFT over time per model. Worst-case prefill latency. Sustained elevation = need more GPU capacity or prompt length limits.')
+    + timeSeries.panelOptions.withGridPos(8, 8, 16, 22)
+    + timeSeries.queryOptions.withTargets([
+      prometheus.new(ds, q.ttftP99OverTime)
+      + prometheus.withLegendFormat('{{model_name}}'),
+    ])
+    + timeSeries.standardOptions.withUnit('s')
+    + timeSeries.standardOptions.withMin(0)
+    + timeSeries.standardOptions.color.withMode('palette-classic')
+    + timeSeries.standardOptions.thresholds.withSteps(ttftThresholds)
+    + tsDefaults
+    + timeSeries.fieldConfig.defaults.custom.withLineInterpolation('linear')
+    + timeSeries.fieldConfig.defaults.custom.withShowPoints('always')
+    + timeSeries.fieldConfig.defaults.custom.withSpanNulls(true)
     + timeSeries.fieldConfig.defaults.custom.thresholdsStyle.withMode('line')
     + timeSeries.options.legend.withDisplayMode('table')
     + timeSeries.options.legend.withPlacement('right')
@@ -163,7 +212,7 @@ local e2eThresholds = [
     // E2E latency over time — P50 / P95 / P99 per model
     timeSeries.new('End-to-End Request Duration Over Time')
     + timeSeries.panelOptions.withDescription('Full request duration (queue wait + prefill + decode). P99 is the user-perceived worst case. Growing P99 with stable TTFT = decode bottleneck.')
-    + timeSeries.panelOptions.withGridPos(8, 12, 12, 22)
+    + timeSeries.panelOptions.withGridPos(8, 12, 0, 31)
     + timeSeries.queryOptions.withTargets([
       prometheus.new(ds, q.e2eP50OverTime)
       + prometheus.withLegendFormat('P50 {{model_name}}'),
@@ -190,7 +239,7 @@ local e2eThresholds = [
     // TPOT over time — P50 / P99 per model
     timeSeries.new('Time per Output Token Over Time')
     + timeSeries.panelOptions.withDescription('TPOT percentiles over time. Rising TPOT = decode is slower, fewer concurrent batches possible. Correlate with requests_running.')
-    + timeSeries.panelOptions.withGridPos(8, 24, 0, 31)
+    + timeSeries.panelOptions.withGridPos(8, 12, 12, 31)
     + timeSeries.queryOptions.withTargets([
       prometheus.new(ds, q.tpotP50OverTime)
       + prometheus.withLegendFormat('P50 {{model_name}}'),

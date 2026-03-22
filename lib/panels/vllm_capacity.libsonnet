@@ -120,21 +120,22 @@ local tsLegend =
     + stat.options.withGraphMode('area')
     + stat.options.reduceOptions.withCalcs(['lastNotNull']),
 
-    stat.new('Requests Swapped')
-    + stat.panelOptions.withDescription('Requests preempted to CPU KV cache. Non-zero = GPU KV cache overflow. Degrades latency significantly.')
+    stat.new('Total Load')
+    + stat.panelOptions.withDescription('Total concurrent requests (running + waiting). Rising with GPU % high = compute saturation. Rising with GPU % low = KV cache or scheduling bottleneck.')
     + stat.panelOptions.withGridPos(4, 4, 16, 142)
     + stat.queryOptions.withTargets([
-      prometheus.new(ds, q.vllmRequestsSwapped)
-      + prometheus.withLegendFormat('Swapped'),
+      prometheus.new(ds, q.vllmTotalRequests)
+      + prometheus.withLegendFormat('Total'),
     ])
     + stat.standardOptions.withUnit('short')
     + stat.standardOptions.color.withMode('thresholds')
     + stat.standardOptions.thresholds.withSteps([
       { color: 'green', value: null },
-      { color: 'red', value: 1 },
+      { color: '#EAB839', value: 10 },
+      { color: 'red', value: 50 },
     ])
-    + stat.options.withColorMode('background')
-    + stat.options.withGraphMode('none')
+    + stat.options.withColorMode('value')
+    + stat.options.withGraphMode('area')
     + stat.options.reduceOptions.withCalcs(['lastNotNull']),
 
     stat.new('Prefix Cache Hit Rate')

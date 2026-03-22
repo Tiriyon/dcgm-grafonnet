@@ -1,89 +1,89 @@
 // PromQL queries for vLLM monitoring dashboard.
-// Compatible with vLLM v0.10.x – v0.15.x. All metrics use the vllm: prefix.
+// Metric names match vLLM as observed on this cluster (no _total suffix on counters,
+// kv_cache_usage_perc instead of gpu_cache_usage_perc, etc.).
 // Primary selectors: namespace, model_name (per-deployment), pod (per-replica).
-// Histogram metrics: _bucket suffix for quantile_over_time / histogram_quantile patterns.
-// Note: gpu_cache_hit_rate, request_queue_time_seconds added in v0.14+; absent on older builds.
+// Histogram metrics use _bucket suffix for histogram_quantile patterns.
+// All rate/histogram windows use $__rate_interval (Grafana auto-sets based on scrape
+// interval + time range) to avoid NaN on sparse traffic.
+// Latency mapping:
+//   TTFT  → vllm:request_prefill_time_seconds  (prefill latency; excludes queue wait)
+//   TPOT  → vllm:inter_token_latency_seconds   (inter-token / decode latency)
+//   E2E   → vllm:e2e_request_latency_seconds   (full request duration)
 {
   // --- Service health KPIs ---
 
-  // Requests currently being decoded (active inference)
   requestsRunning:
     'sum(vllm:num_requests_running{namespace="$namespace", model_name=~"$model_name"})',
 
-  // Requests waiting in scheduler queue
   requestsWaiting:
     'sum(vllm:num_requests_waiting{namespace="$namespace", model_name=~"$model_name"})',
 
-  // Requests swapped to CPU KV cache (memory pressure signal)
   requestsSwapped:
     'sum(vllm:num_requests_swapped{namespace="$namespace", model_name=~"$model_name"})',
 
-  // Request throughput — finished requests per second
   requestThroughput: |||
     sum(
-      rate(vllm:request_success_total{namespace="$namespace", model_name=~"$model_name"}[5m])
+      rate(vllm:request_success{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
     )
   |||,
 
-  // Token generation rate — output tokens per second
   tokenGenRate: |||
     sum(
-      rate(vllm:generation_tokens_total{namespace="$namespace", model_name=~"$model_name"}[5m])
+      rate(vllm:generation_tokens{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
     )
   |||,
 
-  // Total tokens per second (prompt + generation)
   totalTokenRate: |||
     sum(
-      rate(vllm:prompt_tokens_total{namespace="$namespace", model_name=~"$model_name"}[5m])
-      + rate(vllm:generation_tokens_total{namespace="$namespace", model_name=~"$model_name"}[5m])
+      rate(vllm:prompt_tokens{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
+      + rate(vllm:generation_tokens{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
     )
   |||,
 
-  // TTFT P99 — snapshot for KPI stat
   ttftP99Snapshot: |||
     histogram_quantile(0.99,
       sum(
-        rate(vllm:time_to_first_token_seconds_bucket{
+        rate(vllm:request_prefill_time_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le)
     )
   |||,
 
   // --- KV cache ---
 
-  // GPU KV cache utilization (0–1, 1 = full)
   gpuCacheUsage:
-    'avg(vllm:gpu_cache_usage_perc{namespace="$namespace", model_name=~"$model_name"})',
+    'avg(vllm:kv_cache_usage_perc{namespace="$namespace", model_name=~"$model_name"})',
 
-  // CPU KV cache utilization (0–1; only valid when CPU offload is enabled)
-  cpuCacheUsage:
-    'avg(vllm:cpu_cache_usage_perc{namespace="$namespace", model_name=~"$model_name"})',
+  // Peak GPU KV cache over the last 15 minutes — shows pressure even if current value dropped.
+  // Replaces cpu_cache_usage_perc which is not exposed when CPU offloading is disabled.
+  gpuCachePeak:
+    'max(max_over_time(vllm:kv_cache_usage_perc{namespace="$namespace", model_name=~"$model_name"}[15m]))',
 
-  // Prefix cache hit rate (v0.14+; absent on older builds — panel shows no data gracefully)
-  cacheHitRate:
-    'avg(vllm:gpu_cache_hit_rate{namespace="$namespace", model_name=~"$model_name"})',
-
-  // GPU cache over time — per pod for replica comparison
-  gpuCacheOverTime: |||
-    vllm:gpu_cache_usage_perc{namespace="$namespace", model_name=~"$model_name", pod=~"$pod"}
+  cacheHitRate: |||
+    sum(
+      rate(vllm:prefix_cache_hits{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
+    )
+    /
+    (
+      sum(
+        rate(vllm:prefix_cache_queries{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
+      ) > 0
+    )
   |||,
 
-  // CPU cache over time
-  cpuCacheOverTime: |||
-    vllm:cpu_cache_usage_perc{namespace="$namespace", model_name=~"$model_name", pod=~"$pod"}
+  gpuCacheOverTime: |||
+    vllm:kv_cache_usage_perc{namespace="$namespace", model_name=~"$model_name", pod=~"$pod"}
   |||,
 
   // --- Request latency (histogram_quantile over rate) ---
 
-  // Time to First Token — P50 / P95 / P99 snapshot stats
   ttftP50: |||
     histogram_quantile(0.50,
       sum(
-        rate(vllm:time_to_first_token_seconds_bucket{
+        rate(vllm:request_prefill_time_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le)
     )
   |||,
@@ -91,9 +91,9 @@
   ttftP95: |||
     histogram_quantile(0.95,
       sum(
-        rate(vllm:time_to_first_token_seconds_bucket{
+        rate(vllm:request_prefill_time_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le)
     )
   |||,
@@ -101,20 +101,19 @@
   ttftP99: |||
     histogram_quantile(0.99,
       sum(
-        rate(vllm:time_to_first_token_seconds_bucket{
+        rate(vllm:request_prefill_time_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le)
     )
   |||,
 
-  // Time per Output Token — P50 / P95 / P99 snapshot stats
   tpotP50: |||
     histogram_quantile(0.50,
       sum(
-        rate(vllm:time_per_output_token_seconds_bucket{
+        rate(vllm:inter_token_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le)
     )
   |||,
@@ -122,9 +121,9 @@
   tpotP95: |||
     histogram_quantile(0.95,
       sum(
-        rate(vllm:time_per_output_token_seconds_bucket{
+        rate(vllm:inter_token_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le)
     )
   |||,
@@ -132,20 +131,19 @@
   tpotP99: |||
     histogram_quantile(0.99,
       sum(
-        rate(vllm:time_per_output_token_seconds_bucket{
+        rate(vllm:inter_token_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le)
     )
   |||,
 
-  // End-to-end request duration — P50 / P95 / P99 snapshot stats
   e2eP50: |||
     histogram_quantile(0.50,
       sum(
-        rate(vllm:request_duration_seconds_bucket{
+        rate(vllm:e2e_request_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le)
     )
   |||,
@@ -153,9 +151,9 @@
   e2eP95: |||
     histogram_quantile(0.95,
       sum(
-        rate(vllm:request_duration_seconds_bucket{
+        rate(vllm:e2e_request_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le)
     )
   |||,
@@ -163,20 +161,20 @@
   e2eP99: |||
     histogram_quantile(0.99,
       sum(
-        rate(vllm:request_duration_seconds_bucket{
+        rate(vllm:e2e_request_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le)
     )
   |||,
 
-  // TTFT over time — multiple quantiles for timeseries panel
+  // Timeseries variants — grouped by model_name for multi-series panels
   ttftP50OverTime: |||
     histogram_quantile(0.50,
       sum(
-        rate(vllm:time_to_first_token_seconds_bucket{
+        rate(vllm:request_prefill_time_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
@@ -184,9 +182,9 @@
   ttftP95OverTime: |||
     histogram_quantile(0.95,
       sum(
-        rate(vllm:time_to_first_token_seconds_bucket{
+        rate(vllm:request_prefill_time_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
@@ -194,20 +192,19 @@
   ttftP99OverTime: |||
     histogram_quantile(0.99,
       sum(
-        rate(vllm:time_to_first_token_seconds_bucket{
+        rate(vllm:request_prefill_time_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
 
-  // E2E latency over time — multiple quantiles
   e2eP50OverTime: |||
     histogram_quantile(0.50,
       sum(
-        rate(vllm:request_duration_seconds_bucket{
+        rate(vllm:e2e_request_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
@@ -215,9 +212,9 @@
   e2eP95OverTime: |||
     histogram_quantile(0.95,
       sum(
-        rate(vllm:request_duration_seconds_bucket{
+        rate(vllm:e2e_request_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
@@ -225,20 +222,19 @@
   e2eP99OverTime: |||
     histogram_quantile(0.99,
       sum(
-        rate(vllm:request_duration_seconds_bucket{
+        rate(vllm:e2e_request_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
 
-  // TPOT over time — per model_name
   tpotP50OverTime: |||
     histogram_quantile(0.50,
       sum(
-        rate(vllm:time_per_output_token_seconds_bucket{
+        rate(vllm:inter_token_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
@@ -246,43 +242,39 @@
   tpotP99OverTime: |||
     histogram_quantile(0.99,
       sum(
-        rate(vllm:time_per_output_token_seconds_bucket{
+        rate(vllm:inter_token_latency_seconds_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
 
   // --- Token throughput ---
 
-  // Prompt tokens per second over time — per model
   promptTokenRateOverTime: |||
     sum by (model_name) (
-      rate(vllm:prompt_tokens_total{namespace="$namespace", model_name=~"$model_name"}[5m])
+      rate(vllm:prompt_tokens{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
     )
   |||,
 
-  // Generation tokens per second over time — per model
   genTokenRateOverTime: |||
     sum by (model_name) (
-      rate(vllm:generation_tokens_total{namespace="$namespace", model_name=~"$model_name"}[5m])
+      rate(vllm:generation_tokens{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
     )
   |||,
 
-  // Request throughput over time — per model
   requestThroughputOverTime: |||
     sum by (model_name) (
-      rate(vllm:request_success_total{namespace="$namespace", model_name=~"$model_name"}[5m])
+      rate(vllm:request_success{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
     )
   |||,
 
-  // Prompt length distribution — P50 / P95 over time
   promptLenP50: |||
     histogram_quantile(0.50,
       sum(
         rate(vllm:request_prompt_tokens_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
@@ -292,18 +284,17 @@
       sum(
         rate(vllm:request_prompt_tokens_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
 
-  // Output length distribution — P50 / P95 over time
   outputLenP50: |||
     histogram_quantile(0.50,
       sum(
         rate(vllm:request_generation_tokens_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
@@ -313,14 +304,13 @@
       sum(
         rate(vllm:request_generation_tokens_bucket{
           namespace="$namespace", model_name=~"$model_name"
-        }[5m])
+        }[$__rate_interval])
       ) by (le, model_name)
     )
   |||,
 
   // --- Queue & scheduler ---
 
-  // Queue depth over time — running + waiting + swapped per model
   queueRunningOverTime: |||
     sum by (model_name) (
       vllm:num_requests_running{namespace="$namespace", model_name=~"$model_name"}
@@ -339,21 +329,18 @@
     )
   |||,
 
-  // Preemption rate (events per second)
   preemptionRate: |||
     sum by (model_name) (
-      rate(vllm:num_preemptions_total{namespace="$namespace", model_name=~"$model_name"}[5m])
+      rate(vllm:num_preemptions{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
     )
   |||,
 
-  // Request finish reason breakdown — per model, per finish_reason label
   finishReasonRate: |||
     sum by (model_name, finished_reason) (
-      rate(vllm:request_success_total{namespace="$namespace", model_name=~"$model_name"}[5m])
+      rate(vllm:request_success{namespace="$namespace", model_name=~"$model_name"}[$__rate_interval])
     )
   |||,
 
-  // Per-pod running requests — for replica-level view
   runningByPod: |||
     vllm:num_requests_running{namespace="$namespace", model_name=~"$model_name", pod=~"$pod"}
   |||,

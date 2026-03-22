@@ -1,5 +1,5 @@
 {
-   "description": "vLLM v0.10–v0.15 operational metrics: KV cache pressure, TTFT/TPOT latency, token throughput, queue depth, and per-replica balance. Filter by namespace → model → pod.",
+   "description": "vLLM capacity drill-down: platform KPIs → per-model saturation signals and latency SLOs → per-replica load balance. Filter: namespace → model → pod.",
    "editable": true,
    "graphTooltip": 1,
    "liveNow": false,
@@ -13,7 +13,7 @@
             "y": 0
          },
          "id": 1,
-         "title": "Service Health",
+         "title": "Fleet Capacity Overview",
          "type": "row"
       },
       {
@@ -21,7 +21,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Requests currently being decoded across all selected replicas.",
+         "description": "Total generation token throughput across all selected models. Primary output capacity metric — size the fleet to sustain this at SLO latency.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -61,11 +61,11 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum(vllm:num_requests_running{namespace=\"$namespace\", model_name=~\"$model_name\"})",
-               "legendFormat": "Running"
+               "expr": "sum(rate(vllm:generation_tokens{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval]))",
+               "legendFormat": "tok/s"
             }
          ],
-         "title": "Requests Running",
+         "title": "Gen Tokens/s",
          "type": "stat"
       },
       {
@@ -73,7 +73,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Requests in the scheduler queue waiting for a free slot. Growing queue = capacity pressure.",
+         "description": "Requests currently being decoded on GPU. Stable value = healthy concurrency. Sudden drop = possible engine crash or restart.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -82,16 +82,8 @@
                "thresholds": {
                   "steps": [
                      {
-                        "color": "green",
+                        "color": "blue",
                         "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 10
-                     },
-                     {
-                        "color": "red",
-                        "value": 50
                      }
                   ]
                },
@@ -105,6 +97,66 @@
             "y": 1
          },
          "id": 3,
+         "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum(vllm:num_requests_running{namespace=\"$namespace\", model_name=~\"$model_name\"})",
+               "legendFormat": "running"
+            }
+         ],
+         "title": "Requests Running",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Requests queued waiting for a GPU slot (KV-cache block availability). Any sustained non-zero value = capacity exhausted. Waiting > 0 with low GPU utilisation = KV-cache bottleneck, not compute.",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "thresholds"
+               },
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 1
+                     },
+                     {
+                        "color": "red",
+                        "value": 10
+                     }
+                  ]
+               },
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 1
+         },
+         "id": 4,
          "options": {
             "colorMode": "background",
             "graphMode": "area",
@@ -122,7 +174,7 @@
                   "uid": "${datasource}"
                },
                "expr": "sum(vllm:num_requests_waiting{namespace=\"$namespace\", model_name=~\"$model_name\"})",
-               "legendFormat": "Waiting"
+               "legendFormat": "waiting"
             }
          ],
          "title": "Requests Waiting",
@@ -133,12 +185,14 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Requests preempted to CPU KV cache. Non-zero = GPU KV cache is under pressure.",
+         "description": "Average GPU KV-cache utilisation across pods. Above 85% = preemption risk. The primary memory capacity constraint — when this saturates the engine queues or drops requests.",
          "fieldConfig": {
             "defaults": {
                "color": {
                   "mode": "thresholds"
                },
+               "max": 100,
+               "min": 0,
                "thresholds": {
                   "steps": [
                      {
@@ -146,64 +200,16 @@
                         "value": null
                      },
                      {
-                        "color": "red",
-                        "value": 1
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 8,
-            "y": 1
-         },
-         "id": 4,
-         "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum(vllm:num_requests_swapped{namespace=\"$namespace\", model_name=~\"$model_name\"})",
-               "legendFormat": "Swapped"
-            }
-         ],
-         "title": "Requests Swapped",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Completed requests per second across selected model(s).",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
+                        "color": "#EAB839",
+                        "value": 70
+                     },
                      {
-                        "color": "blue",
-                        "value": null
+                        "color": "red",
+                        "value": 85
                      }
                   ]
                },
-               "unit": "reqps"
+               "unit": "percent"
             }
          },
          "gridPos": {
@@ -214,7 +220,7 @@
          },
          "id": 5,
          "options": {
-            "colorMode": "value",
+            "colorMode": "background",
             "graphMode": "area",
             "reduceOptions": {
                "calcs": [
@@ -229,11 +235,11 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum(\n  rate(vllm:request_success{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n)\n",
-               "legendFormat": "req/s"
+               "expr": "avg(vllm:kv_cache_usage_perc{namespace=\"$namespace\", model_name=~\"$model_name\"}) * 100",
+               "legendFormat": "cache %"
             }
          ],
-         "title": "Request Throughput",
+         "title": "KV Cache %",
          "type": "stat"
       },
       {
@@ -241,7 +247,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Output tokens per second. Primary throughput signal for inference capacity planning.",
+         "description": "Rate of KV-cache evictions. Non-zero = GPU memory was full and the scheduler evicted requests. Any sustained value here means you are running over memory capacity.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -252,6 +258,14 @@
                      {
                         "color": "green",
                         "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 0.01
+                     },
+                     {
+                        "color": "red",
+                        "value": 1
                      }
                   ]
                },
@@ -266,6 +280,58 @@
          },
          "id": 6,
          "options": {
+            "colorMode": "background",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum(rate(vllm:num_preemptions{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])) * 60",
+               "legendFormat": "preempt/min"
+            }
+         ],
+         "title": "Preemptions/min",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Successfully completed requests per second. Divide Gen Tokens/s by Request Rate to get average output length. Dropping rate with stable running count = longer responses.",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "thresholds"
+               },
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     }
+                  ]
+               },
+               "unit": "reqps"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 20,
+            "y": 1
+         },
+         "id": 7,
+         "options": {
             "colorMode": "value",
             "graphMode": "area",
             "reduceOptions": {
@@ -281,71 +347,11 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum(\n  rate(vllm:generation_tokens{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n)\n",
-               "legendFormat": "tok/s"
+               "expr": "sum(rate(vllm:request_success{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval]))",
+               "legendFormat": "req/s"
             }
          ],
-         "title": "Token Generation Rate",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "99th percentile Time to First Token. Proxy for prefill latency. >1s impacts perceived responsiveness.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 1
-                     },
-                     {
-                        "color": "red",
-                        "value": 5
-                     }
-                  ]
-               },
-               "unit": "s"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 20,
-            "y": 1
-         },
-         "id": 7,
-         "options": {
-            "colorMode": "background",
-            "graphMode": "none",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "histogram_quantile(0.99,\n  sum(\n    rate(vllm:request_prefill_time_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le)\n)\n",
-               "legendFormat": "P99"
-            }
-         ],
-         "title": "TTFT P99",
+         "title": "Request Rate",
          "type": "stat"
       },
       {
@@ -357,7 +363,7 @@
             "y": 6
          },
          "id": 8,
-         "title": "KV Cache",
+         "title": "Saturation Signals — Queue Depth & KV Cache Pressure",
          "type": "row"
       },
       {
@@ -365,187 +371,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "GPU KV cache utilization (0–1). Above 0.9 = preemption risk. Values are per-engine; averaged across replicas here.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "max": 1,
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 0.69999999999999996
-                     },
-                     {
-                        "color": "red",
-                        "value": 0.90000000000000002
-                     }
-                  ]
-               },
-               "unit": "percentunit"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 6,
-            "x": 0,
-            "y": 7
-         },
-         "id": 9,
-         "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "avg(vllm:kv_cache_usage_perc{namespace=\"$namespace\", model_name=~\"$model_name\"})",
-               "legendFormat": "GPU Cache"
-            }
-         ],
-         "title": "GPU KV Cache Usage",
-         "type": "gauge"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Peak GPU KV cache utilization over the last 15 minutes. Catches transient saturation spikes that the current-value gauge misses. Above 0.85 = preemption risk was present.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "max": 1,
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 0.69999999999999996
-                     },
-                     {
-                        "color": "red",
-                        "value": 0.90000000000000002
-                     }
-                  ]
-               },
-               "unit": "percentunit"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 6,
-            "x": 6,
-            "y": 7
-         },
-         "id": 10,
-         "options": {
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "max(max_over_time(vllm:kv_cache_usage_perc{namespace=\"$namespace\", model_name=~\"$model_name\"}[15m]))",
-               "legendFormat": "Peak"
-            }
-         ],
-         "title": "KV Cache Peak (15m)",
-         "type": "gauge"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Fraction of prompt tokens served from prefix cache. High hit rate = cost savings on repeated prefixes. Requires v0.14+.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "#EAB839",
-                        "value": null
-                     },
-                     {
-                        "color": "green",
-                        "value": 0.5
-                     }
-                  ]
-               },
-               "unit": "percentunit"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 6,
-            "x": 12,
-            "y": 7
-         },
-         "id": 11,
-         "options": {
-            "colorMode": "background",
-            "graphMode": "area",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum(\n  rate(vllm:prefix_cache_hits{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n)\n/\n(\n  sum(\n    rate(vllm:prefix_cache_queries{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n  ) > 0\n)\n",
-               "legendFormat": "Hit Rate"
-            }
-         ],
-         "title": "Prefix Cache Hit Rate",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "GPU KV cache utilization per pod over time. Pods consistently at >0.85 will experience preemptions and latency spikes.",
+         "description": "Running (actively using GPU) and waiting (blocked on KV-cache) request counts per model. Waiting > 0 sustained = capacity exhausted. Healthy: running high, waiting zero. KV-cache bound: KV cache at 85%+ while waiting grows. Compute bound: GPU at 100%, waiting near zero.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -553,11 +379,95 @@
                },
                "custom": {
                   "drawStyle": "line",
-                  "fillOpacity": 10,
+                  "fillOpacity": 8,
                   "lineInterpolation": "smooth",
                   "lineWidth": 2,
                   "showPoints": "never",
-                  "spanNulls": false,
+                  "spanNulls": true,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "off"
+                  }
+               },
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     }
+                  ]
+               },
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 7
+         },
+         "id": 9,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max",
+                  "last"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (model_name) (\n  vllm:num_requests_running{namespace=\"$namespace\", model_name=~\"$model_name\"}\n)\n",
+               "legendFormat": "Running — {{model_name}}"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (model_name) (\n  vllm:num_requests_waiting{namespace=\"$namespace\", model_name=~\"$model_name\"}\n)\n",
+               "legendFormat": "Waiting — {{model_name}}"
+            }
+         ],
+         "title": "Request Queue Depth by Model",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Average GPU KV-cache utilisation per model. 85% threshold line marks the preemption boundary — crossing it means the engine must evict requests. Sustained proximity = need more GPU VRAM per pod, or reduce max concurrent context length.",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 8,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": true,
                   "stacking": {
                      "mode": "none"
                   },
@@ -565,7 +475,7 @@
                      "mode": "line"
                   }
                },
-               "max": 1,
+               "max": 100,
                "min": 0,
                "thresholds": {
                   "steps": [
@@ -575,22 +485,110 @@
                      },
                      {
                         "color": "#EAB839",
-                        "value": 0.69999999999999996
+                        "value": 70
                      },
                      {
                         "color": "red",
-                        "value": 0.90000000000000002
+                        "value": 85
                      }
                   ]
                },
-               "unit": "percentunit"
+               "unit": "percent"
             }
          },
          "gridPos": {
             "h": 8,
-            "w": 6,
-            "x": 18,
+            "w": 12,
+            "x": 12,
             "y": 7
+         },
+         "id": 10,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max",
+                  "last"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (model_name) (vllm:kv_cache_usage_perc{namespace=\"$namespace\", model_name=~\"$model_name\"}) * 100",
+               "legendFormat": "{{model_name}}"
+            }
+         ],
+         "title": "GPU KV Cache % by Model",
+         "type": "timeseries"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 16
+         },
+         "id": 11,
+         "title": "Throughput — Token & Request Rate",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Generation and prompt token throughput per model. Gen tok/s is the primary output capacity metric. Prompt rate >> gen rate = short-answer workload with expensive prefill. Watch for divergence between models to spot hot spots.",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 8,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "off"
+                  }
+               },
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     }
+                  ]
+               },
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 17
          },
          "id": 12,
          "options": {
@@ -618,11 +616,95 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "vllm:kv_cache_usage_perc{namespace=\"$namespace\", model_name=~\"$model_name\", pod=~\"$pod\"}\n",
-               "legendFormat": "{{pod}}"
+               "expr": "sum by (model_name) (\n  rate(vllm:generation_tokens{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n)\n",
+               "legendFormat": "Gen — {{model_name}}"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (model_name) (\n  rate(vllm:prompt_tokens{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n)\n",
+               "legendFormat": "Prompt — {{model_name}}"
             }
          ],
-         "title": "GPU KV Cache Usage Over Time",
+         "title": "Token Rate by Model",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Successfully completed requests per second per model. Divide gen tok/s by req/s to get average output length. A falling req/s with stable gen tok/s means responses are getting longer.",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 8,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "off"
+                  }
+               },
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "blue",
+                        "value": null
+                     }
+                  ]
+               },
+               "unit": "reqps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 17
+         },
+         "id": 13,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max",
+                  "last"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (model_name) (\n  rate(vllm:request_success{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n)\n",
+               "legendFormat": "{{model_name}}"
+            }
+         ],
+         "title": "Request Throughput by Model",
          "type": "timeseries"
       },
       {
@@ -631,10 +713,10 @@
             "h": 1,
             "w": 24,
             "x": 0,
-            "y": 16
+            "y": 26
          },
-         "id": 13,
-         "title": "Request Latency",
+         "id": 14,
+         "title": "Request Latency — SLO Budget",
          "type": "row"
       },
       {
@@ -642,7 +724,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Median Time to First Token — typical prefill latency",
+         "description": "Median end-to-end request latency (queue + prefill + decode). Typical user experience baseline.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -656,11 +738,11 @@
                      },
                      {
                         "color": "#EAB839",
-                        "value": 1
+                        "value": 10
                      },
                      {
                         "color": "red",
-                        "value": 5
+                        "value": 30
                      }
                   ]
                },
@@ -671,12 +753,12 @@
             "h": 4,
             "w": 4,
             "x": 0,
-            "y": 17
+            "y": 27
          },
-         "id": 14,
+         "id": 15,
          "options": {
             "colorMode": "value",
-            "graphMode": "none",
+            "graphMode": "area",
             "reduceOptions": {
                "calcs": [
                   "lastNotNull"
@@ -690,11 +772,11 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(vllm:request_prefill_time_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le)\n)\n",
+               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(vllm:e2e_request_latency_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le)\n)\n",
                "legendFormat": "P50"
             }
          ],
-         "title": "TTFT P50",
+         "title": "E2E P50",
          "type": "stat"
       },
       {
@@ -702,7 +784,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "95th percentile TTFT — tail latency for prefill",
+         "description": "99th percentile end-to-end latency — worst-case user experience. Should stay under your SLO ceiling.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -716,11 +798,11 @@
                      },
                      {
                         "color": "#EAB839",
-                        "value": 1
+                        "value": 10
                      },
                      {
                         "color": "red",
-                        "value": 5
+                        "value": 30
                      }
                   ]
                },
@@ -731,12 +813,12 @@
             "h": 4,
             "w": 4,
             "x": 4,
-            "y": 17
+            "y": 27
          },
-         "id": 15,
+         "id": 16,
          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
+            "colorMode": "background",
+            "graphMode": "area",
             "reduceOptions": {
                "calcs": [
                   "lastNotNull"
@@ -750,11 +832,11 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "histogram_quantile(0.95,\n  sum(\n    rate(vllm:request_prefill_time_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le)\n)\n",
-               "legendFormat": "P95"
+               "expr": "histogram_quantile(0.99,\n  sum(\n    rate(vllm:e2e_request_latency_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le)\n)\n",
+               "legendFormat": "P99"
             }
          ],
-         "title": "TTFT P95",
+         "title": "E2E P99",
          "type": "stat"
       },
       {
@@ -762,7 +844,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "99th percentile TTFT — worst-case prefill latency",
+         "description": "Median time to first token (prefill phase latency). User perceives this as the delay before the response starts appearing.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -791,12 +873,72 @@
             "h": 4,
             "w": 4,
             "x": 8,
-            "y": 17
+            "y": 27
          },
-         "id": 16,
+         "id": 17,
+         "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(vllm:request_prefill_time_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le)\n)\n",
+               "legendFormat": "P50"
+            }
+         ],
+         "title": "TTFT P50",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "99th percentile TTFT. Spikes indicate compute saturation during prefill: very long prompts, high concurrency, or GPU at capacity.",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "thresholds"
+               },
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 1
+                     },
+                     {
+                        "color": "red",
+                        "value": 5
+                     }
+                  ]
+               },
+               "unit": "s"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 12,
+            "y": 27
+         },
+         "id": 18,
          "options": {
             "colorMode": "background",
-            "graphMode": "none",
+            "graphMode": "area",
             "reduceOptions": {
                "calcs": [
                   "lastNotNull"
@@ -822,67 +964,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Median Time per Output Token — P50 decode speed. Lower is faster.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "thresholds"
-               },
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 0.050000000000000003
-                     },
-                     {
-                        "color": "red",
-                        "value": 0.10000000000000001
-                     }
-                  ]
-               },
-               "unit": "s"
-            }
-         },
-         "gridPos": {
-            "h": 4,
-            "w": 4,
-            "x": 12,
-            "y": 17
-         },
-         "id": 17,
-         "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "reduceOptions": {
-               "calcs": [
-                  "lastNotNull"
-               ]
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(vllm:inter_token_latency_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le)\n)\n",
-               "legendFormat": "P50"
-            }
-         ],
-         "title": "TPOT P50",
-         "type": "stat"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "95th percentile TPOT — tail decode latency per token",
+         "description": "Median time per output token (inter-token decode latency). Determines streaming speed perceived by users. Lower = faster streaming.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -911,12 +993,12 @@
             "h": 4,
             "w": 4,
             "x": 16,
-            "y": 17
+            "y": 27
          },
-         "id": 18,
+         "id": 19,
          "options": {
             "colorMode": "value",
-            "graphMode": "none",
+            "graphMode": "area",
             "reduceOptions": {
                "calcs": [
                   "lastNotNull"
@@ -930,11 +1012,11 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "histogram_quantile(0.95,\n  sum(\n    rate(vllm:inter_token_latency_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le)\n)\n",
-               "legendFormat": "P95"
+               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(vllm:inter_token_latency_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le)\n)\n",
+               "legendFormat": "P50"
             }
          ],
-         "title": "TPOT P95",
+         "title": "TPOT P50",
          "type": "stat"
       },
       {
@@ -942,7 +1024,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "99th percentile TPOT — worst-case decode speed per token",
+         "description": "99th percentile TPOT. Rising P99 = decode is becoming a bottleneck; fewer parallel sequences can be sustained. Correlate with Requests Running.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -971,12 +1053,12 @@
             "h": 4,
             "w": 4,
             "x": 20,
-            "y": 17
+            "y": 27
          },
-         "id": 19,
+         "id": 20,
          "options": {
             "colorMode": "background",
-            "graphMode": "none",
+            "graphMode": "area",
             "reduceOptions": {
                "calcs": [
                   "lastNotNull"
@@ -1002,259 +1084,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Median TTFT (prefill latency) over time per model. Baseline signal — if P50 is elevated, the cluster is broadly under compute pressure.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 8,
-                  "lineInterpolation": "linear",
-                  "lineWidth": 2,
-                  "showPoints": "always",
-                  "spanNulls": true,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "line"
-                  }
-               },
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 1
-                     },
-                     {
-                        "color": "red",
-                        "value": 5
-                     }
-                  ]
-               },
-               "unit": "s"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 0,
-            "y": 22
-         },
-         "id": 20,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(vllm:request_prefill_time_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
-               "legendFormat": "{{model_name}}"
-            }
-         ],
-         "title": "TTFT P50 Over Time",
-         "type": "timeseries"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "95th percentile TTFT over time per model. First tail signal to watch — spikes here before P99 indicate prefill contention starting.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 8,
-                  "lineInterpolation": "linear",
-                  "lineWidth": 2,
-                  "showPoints": "always",
-                  "spanNulls": true,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "line"
-                  }
-               },
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 1
-                     },
-                     {
-                        "color": "red",
-                        "value": 5
-                     }
-                  ]
-               },
-               "unit": "s"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 8,
-            "y": 22
-         },
-         "id": 21,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "histogram_quantile(0.95,\n  sum(\n    rate(vllm:request_prefill_time_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
-               "legendFormat": "{{model_name}}"
-            }
-         ],
-         "title": "TTFT P95 Over Time",
-         "type": "timeseries"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "99th percentile TTFT over time per model. Worst-case prefill latency. Sustained elevation = need more GPU capacity or prompt length limits.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 8,
-                  "lineInterpolation": "linear",
-                  "lineWidth": 2,
-                  "showPoints": "always",
-                  "spanNulls": true,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "line"
-                  }
-               },
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     },
-                     {
-                        "color": "#EAB839",
-                        "value": 1
-                     },
-                     {
-                        "color": "red",
-                        "value": 5
-                     }
-                  ]
-               },
-               "unit": "s"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 16,
-            "y": 22
-         },
-         "id": 22,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "histogram_quantile(0.99,\n  sum(\n    rate(vllm:request_prefill_time_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
-               "legendFormat": "{{model_name}}"
-            }
-         ],
-         "title": "TTFT P99 Over Time",
-         "type": "timeseries"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Full request duration (queue wait + prefill + decode). P99 is the user-perceived worst case. Growing P99 with stable TTFT = decode bottleneck.",
+         "description": "End-to-end latency P50 and P99 by model over time. Growing P99 with stable TTFT = decode bottleneck. Both growing together = prefill/compute saturation or queue build-up.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -1266,7 +1096,7 @@
                   "lineInterpolation": "smooth",
                   "lineWidth": 2,
                   "showPoints": "never",
-                  "spanNulls": false,
+                  "spanNulls": true,
                   "stacking": {
                      "mode": "none"
                   },
@@ -1296,11 +1126,11 @@
          },
          "gridPos": {
             "h": 8,
-            "w": 12,
+            "w": 8,
             "x": 0,
             "y": 31
          },
-         "id": 23,
+         "id": 21,
          "options": {
             "legend": {
                "calcs": [
@@ -1334,19 +1164,11 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "histogram_quantile(0.95,\n  sum(\n    rate(vllm:e2e_request_latency_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
-               "legendFormat": "P95 {{model_name}}"
-            },
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
                "expr": "histogram_quantile(0.99,\n  sum(\n    rate(vllm:e2e_request_latency_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
                "legendFormat": "P99 {{model_name}}"
             }
          ],
-         "title": "End-to-End Request Duration Over Time",
+         "title": "E2E Request Latency",
          "type": "timeseries"
       },
       {
@@ -1354,7 +1176,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "TPOT percentiles over time. Rising TPOT = decode is slower, fewer concurrent batches possible. Correlate with requests_running.",
+         "description": "TTFT P50 and P99 by model — prefill phase latency. Spikes = heavy prompts or GPU compute saturation during prefill. Sustained elevation = need more compute or shorter context limits.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -1366,7 +1188,99 @@
                   "lineInterpolation": "smooth",
                   "lineWidth": 2,
                   "showPoints": "never",
-                  "spanNulls": false,
+                  "spanNulls": true,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "line"
+                  }
+               },
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "#EAB839",
+                        "value": 1
+                     },
+                     {
+                        "color": "red",
+                        "value": 5
+                     }
+                  ]
+               },
+               "unit": "s"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 31
+         },
+         "id": 22,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max",
+                  "last"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(vllm:request_prefill_time_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
+               "legendFormat": "P50 {{model_name}}"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "histogram_quantile(0.99,\n  sum(\n    rate(vllm:request_prefill_time_seconds_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
+               "legendFormat": "P99 {{model_name}}"
+            }
+         ],
+         "title": "Time to First Token (TTFT)",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "TPOT P50 and P99 by model — decode phase latency per token. Rising TPOT = more concurrent sequences or longer sequences → higher memory pressure per decode step. Correlate with KV cache %.",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 8,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": true,
                   "stacking": {
                      "mode": "none"
                   },
@@ -1396,11 +1310,11 @@
          },
          "gridPos": {
             "h": 8,
-            "w": 12,
-            "x": 12,
+            "w": 8,
+            "x": 16,
             "y": 31
          },
-         "id": 24,
+         "id": 23,
          "options": {
             "legend": {
                "calcs": [
@@ -1438,7 +1352,7 @@
                "legendFormat": "P99 {{model_name}}"
             }
          ],
-         "title": "Time per Output Token Over Time",
+         "title": "Time per Output Token (TPOT)",
          "type": "timeseries"
       },
       {
@@ -1449,8 +1363,8 @@
             "x": 0,
             "y": 40
          },
-         "id": 25,
-         "title": "Token Throughput",
+         "id": 24,
+         "title": "Cache Efficiency & Preemptions",
          "type": "row"
       },
       {
@@ -1458,7 +1372,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Output tokens per second per model. Primary capacity metric — size GPU fleet to sustain this rate at target latency.",
+         "description": "Fraction of KV-cache block lookups served from the prefix cache per model. High rate = significant compute savings on repeated prefixes (system prompts, few-shot examples). Zero = no prefix reuse — consider whether workloads have shared prompt prefixes. Requires prefix caching enabled in vLLM config.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -1466,11 +1380,11 @@
                },
                "custom": {
                   "drawStyle": "line",
-                  "fillOpacity": 10,
+                  "fillOpacity": 8,
                   "lineInterpolation": "smooth",
                   "lineWidth": 2,
                   "showPoints": "never",
-                  "spanNulls": false,
+                  "spanNulls": true,
                   "stacking": {
                      "mode": "none"
                   },
@@ -1478,16 +1392,21 @@
                      "mode": "off"
                   }
                },
+               "max": 1,
                "min": 0,
                "thresholds": {
                   "steps": [
                      {
-                        "color": "green",
+                        "color": "#EAB839",
                         "value": null
+                     },
+                     {
+                        "color": "green",
+                        "value": 0.5
                      }
                   ]
                },
-               "unit": "short"
+               "unit": "percentunit"
             }
          },
          "gridPos": {
@@ -1496,7 +1415,7 @@
             "x": 0,
             "y": 41
          },
-         "id": 26,
+         "id": 25,
          "options": {
             "legend": {
                "calcs": [
@@ -1522,95 +1441,11 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum by (model_name) (\n  rate(vllm:generation_tokens{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n)\n",
-               "legendFormat": "Gen {{model_name}}"
-            },
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum by (model_name) (\n  rate(vllm:prompt_tokens{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n)\n",
-               "legendFormat": "Prompt {{model_name}}"
-            }
-         ],
-         "title": "Token Generation Rate",
-         "type": "timeseries"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Successful requests per second per model. Combine with token rate to understand avg response length trends.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
-                  "showPoints": "never",
-                  "spanNulls": false,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "off"
-                  }
-               },
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "blue",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "reqps"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 41
-         },
-         "id": 27,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum by (model_name) (\n  rate(vllm:request_success{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n)\n",
+               "expr": "sum by (model_name) (\n  rate(vllm:prefix_cache_hits{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n)\n/ (\n  sum by (model_name) (\n    rate(vllm:prefix_cache_queries{namespace=\"$namespace\", model_name=~\"$model_name\"}[$__rate_interval])\n  ) > 0\n)\n",
                "legendFormat": "{{model_name}}"
             }
          ],
-         "title": "Request Throughput",
+         "title": "Prefix Cache Hit Rate by Model",
          "type": "timeseries"
       },
       {
@@ -1618,7 +1453,7 @@
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "P50 / P95 prompt token count. Long prompts drive higher TTFT and VRAM usage. Growing P95 = context is getting longer over time.",
+         "description": "KV-cache eviction rate per second per model. Non-zero = GPU memory was full and the scheduler had to pause requests. Sustained preemptions = reduce concurrent context length, lower max model concurrency, or add GPU memory.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -1626,283 +1461,11 @@
                },
                "custom": {
                   "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "lineInterpolation": "stepAfter",
-                  "lineWidth": 2,
-                  "showPoints": "always",
-                  "spanNulls": false,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "off"
-                  }
-               },
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "purple",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 50
-         },
-         "id": 28,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(vllm:request_prompt_tokens_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
-               "legendFormat": "P50 {{model_name}}"
-            },
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "histogram_quantile(0.95,\n  sum(\n    rate(vllm:request_prompt_tokens_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
-               "legendFormat": "P95 {{model_name}}"
-            }
-         ],
-         "title": "Prompt Length Distribution (tokens)",
-         "type": "timeseries"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "P50 / P95 output token count. Drives TPOT and total GPU time per request. Growing P95 = users triggering longer generation.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "lineInterpolation": "stepAfter",
-                  "lineWidth": 2,
-                  "showPoints": "always",
-                  "spanNulls": false,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "off"
-                  }
-               },
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "orange",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 50
-         },
-         "id": 29,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "histogram_quantile(0.50,\n  sum(\n    rate(vllm:request_generation_tokens_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
-               "legendFormat": "P50 {{model_name}}"
-            },
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "histogram_quantile(0.95,\n  sum(\n    rate(vllm:request_generation_tokens_bucket{\n      namespace=\"$namespace\", model_name=~\"$model_name\"\n    }[$__rate_interval])\n  ) by (le, model_name)\n)\n",
-               "legendFormat": "P95 {{model_name}}"
-            }
-         ],
-         "title": "Output Length Distribution (tokens)",
-         "type": "timeseries"
-      },
-      {
-         "collapsed": false,
-         "gridPos": {
-            "h": 1,
-            "w": 24,
-            "x": 0,
-            "y": 59
-         },
-         "id": 30,
-         "title": "Queue & Scheduler",
-         "type": "row"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Running (being decoded) / Waiting (queue) / Swapped (CPU offload) per model. Waiting growth = saturation. Swapped > 0 = KV cache full, preemptions imminent.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
+                  "fillOpacity": 8,
                   "lineInterpolation": "smooth",
                   "lineWidth": 2,
                   "showPoints": "never",
-                  "spanNulls": false,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "off"
-                  }
-               },
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "blue",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
-         "gridPos": {
-            "h": 8,
-            "w": 14,
-            "x": 0,
-            "y": 60
-         },
-         "id": 31,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum by (model_name) (\n  vllm:num_requests_running{namespace=\"$namespace\", model_name=~\"$model_name\"}\n)\n",
-               "legendFormat": "Running {{model_name}}"
-            },
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum by (model_name) (\n  vllm:num_requests_waiting{namespace=\"$namespace\", model_name=~\"$model_name\"}\n)\n",
-               "legendFormat": "Waiting {{model_name}}"
-            },
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "sum by (model_name) (\n  vllm:num_requests_swapped{namespace=\"$namespace\", model_name=~\"$model_name\"}\n)\n",
-               "legendFormat": "Swapped {{model_name}}"
-            }
-         ],
-         "title": "Request Queue Depth Over Time",
-         "type": "timeseries"
-      },
-      {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "KV cache preemptions per second. Any sustained preemption rate degrades latency — it means requests are being evicted from GPU cache and re-computed.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
-                  "showPoints": "never",
-                  "spanNulls": false,
+                  "spanNulls": true,
                   "stacking": {
                      "mode": "none"
                   },
@@ -1918,8 +1481,12 @@
                         "value": null
                      },
                      {
-                        "color": "red",
+                        "color": "#EAB839",
                         "value": 0.01
+                     },
+                     {
+                        "color": "red",
+                        "value": 1
                      }
                   ]
                },
@@ -1928,11 +1495,11 @@
          },
          "gridPos": {
             "h": 8,
-            "w": 10,
-            "x": 14,
-            "y": 60
+            "w": 12,
+            "x": 12,
+            "y": 41
          },
-         "id": 32,
+         "id": 26,
          "options": {
             "legend": {
                "calcs": [
@@ -1962,91 +1529,27 @@
                "legendFormat": "{{model_name}}"
             }
          ],
-         "title": "Preemption Rate",
+         "title": "Preemption Rate by Model",
          "type": "timeseries"
       },
       {
-         "datasource": {
-            "type": "datasource",
-            "uid": "-- Mixed --"
-         },
-         "description": "Active requests per replica. Even distribution = healthy load balancing. Skew = sticky sessions or readiness probe issues on some replicas.",
-         "fieldConfig": {
-            "defaults": {
-               "color": {
-                  "mode": "palette-classic"
-               },
-               "custom": {
-                  "drawStyle": "line",
-                  "fillOpacity": 10,
-                  "lineInterpolation": "smooth",
-                  "lineWidth": 2,
-                  "showPoints": "never",
-                  "spanNulls": false,
-                  "stacking": {
-                     "mode": "none"
-                  },
-                  "thresholdsStyle": {
-                     "mode": "off"
-                  }
-               },
-               "min": 0,
-               "thresholds": {
-                  "steps": [
-                     {
-                        "color": "green",
-                        "value": null
-                     }
-                  ]
-               },
-               "unit": "short"
-            }
-         },
+         "collapsed": false,
          "gridPos": {
-            "h": 8,
-            "w": 12,
+            "h": 1,
+            "w": 24,
             "x": 0,
-            "y": 69
+            "y": 50
          },
-         "id": 33,
-         "options": {
-            "legend": {
-               "calcs": [
-                  "mean",
-                  "max",
-                  "last"
-               ],
-               "displayMode": "table",
-               "placement": "right",
-               "showLegend": true,
-               "sortBy": "Last",
-               "sortDesc": true
-            },
-            "tooltip": {
-               "mode": "multi",
-               "sort": "desc"
-            }
-         },
-         "pluginVersion": "v11.4.0",
-         "targets": [
-            {
-               "datasource": {
-                  "type": "prometheus",
-                  "uid": "${datasource}"
-               },
-               "expr": "vllm:num_requests_running{namespace=\"$namespace\", model_name=~\"$model_name\", pod=~\"$pod\"}\n",
-               "legendFormat": "{{pod}}"
-            }
-         ],
-         "title": "Running Requests per Pod",
-         "type": "timeseries"
+         "id": 27,
+         "title": "Per-Pod Detail — Replica Health & Load Balance",
+         "type": "row"
       },
       {
          "datasource": {
             "type": "datasource",
             "uid": "-- Mixed --"
          },
-         "description": "Queue depth per replica. Any pod consistently non-zero while others are idle = load balancer not distributing evenly.",
+         "description": "GPU KV-cache utilisation per replica. A single pod above 85% will preempt requests even if the model-level average looks fine. Skew between pods = uneven load distribution or a replica-specific memory leak.",
          "fieldConfig": {
             "defaults": {
                "color": {
@@ -2054,18 +1557,19 @@
                },
                "custom": {
                   "drawStyle": "line",
-                  "fillOpacity": 10,
+                  "fillOpacity": 8,
                   "lineInterpolation": "smooth",
                   "lineWidth": 2,
                   "showPoints": "never",
-                  "spanNulls": false,
+                  "spanNulls": true,
                   "stacking": {
                      "mode": "none"
                   },
                   "thresholdsStyle": {
-                     "mode": "off"
+                     "mode": "line"
                   }
                },
+               "max": 100,
                "min": 0,
                "thresholds": {
                   "steps": [
@@ -2074,21 +1578,25 @@
                         "value": null
                      },
                      {
+                        "color": "#EAB839",
+                        "value": 70
+                     },
+                     {
                         "color": "red",
-                        "value": 0.01
+                        "value": 85
                      }
                   ]
                },
-               "unit": "short"
+               "unit": "percent"
             }
          },
          "gridPos": {
             "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 69
+            "w": 8,
+            "x": 0,
+            "y": 51
          },
-         "id": 34,
+         "id": 28,
          "options": {
             "legend": {
                "calcs": [
@@ -2114,11 +1622,171 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "vllm:num_requests_waiting{namespace=\"$namespace\", model_name=~\"$model_name\", pod=~\"$pod\"}\n",
+               "expr": "vllm:kv_cache_usage_perc{namespace=\"$namespace\", model_name=~\"$model_name\", pod=~\"$pod\"} * 100",
                "legendFormat": "{{pod}}"
             }
          ],
-         "title": "Waiting Requests per Pod",
+         "title": "KV Cache % per Pod",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Running and waiting request counts per replica. A pod with persistent waiting while peers are idle = load-balancer skew or readiness issue on that replica. All pods waiting together = global capacity exhaustion.",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 8,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "off"
+                  }
+               },
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     }
+                  ]
+               },
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 51
+         },
+         "id": 29,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max",
+                  "last"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "vllm:num_requests_running{namespace=\"$namespace\", model_name=~\"$model_name\", pod=~\"$pod\"}",
+               "legendFormat": "Running — {{pod}}"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "vllm:num_requests_waiting{namespace=\"$namespace\", model_name=~\"$model_name\", pod=~\"$pod\"}",
+               "legendFormat": "Waiting — {{pod}}"
+            }
+         ],
+         "title": "Requests per Pod",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Output token throughput per replica. Uneven rates = uneven work distribution (check load-balancer routing). All pods low with users active = upstream throttling or the model is producing very short outputs.",
+         "fieldConfig": {
+            "defaults": {
+               "color": {
+                  "mode": "palette-classic"
+               },
+               "custom": {
+                  "drawStyle": "line",
+                  "fillOpacity": 8,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": {
+                     "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                     "mode": "off"
+                  }
+               },
+               "min": 0,
+               "thresholds": {
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     }
+                  ]
+               },
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 51
+         },
+         "id": 30,
+         "options": {
+            "legend": {
+               "calcs": [
+                  "mean",
+                  "max",
+                  "last"
+               ],
+               "displayMode": "table",
+               "placement": "right",
+               "showLegend": true,
+               "sortBy": "Last",
+               "sortDesc": true
+            },
+            "tooltip": {
+               "mode": "multi",
+               "sort": "desc"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "rate(vllm:generation_tokens{namespace=\"$namespace\", model_name=~\"$model_name\", pod=~\"$pod\"}[$__rate_interval])",
+               "legendFormat": "{{pod}}"
+            }
+         ],
+         "title": "Generation Token Rate per Pod",
          "type": "timeseries"
       }
    ],
@@ -2128,9 +1796,10 @@
       "vllm",
       "llm",
       "inference",
-      "latency",
+      "capacity",
       "kv-cache",
-      "openshift"
+      "latency",
+      "gpu"
    ],
    "templating": {
       "list": [
@@ -2195,6 +1864,6 @@
       ]
    },
    "timezone": "",
-   "title": "vLLM Monitoring",
-   "uid": "vllm-monitoring"
+   "title": "vLLM Inference Capacity",
+   "uid": "vllm-capacity"
 }
