@@ -182,6 +182,39 @@
       / (1024 * 1024)
   ||| + kubePodJoin + ')',
 
+  // --- Deployment-level filtered by $hostname (for standalone dashboards) ---
+  local kubePodJoinByHost = |||
+    * on(pod, namespace) group_left(deployment)
+    label_replace(
+      kube_pod_owner{owner_kind="ReplicaSet"}
+        and on(pod, namespace) kube_pod_info{node=~"$hostname"},
+      "deployment", "$1", "owner_name", "(.+)-[^-]+"
+    )
+  |||,
+
+  deploymentCpuMillicoresByHost: |||
+    sum by (deployment, namespace) (
+      rate(container_cpu_usage_seconds_total{container!="", container!="POD", node=~"$hostname"}[5m]) * 1000
+  ||| + kubePodJoinByHost + ')',
+
+  deploymentCpuRequestedByHost: |||
+    sum by (deployment, namespace) (
+      kube_pod_container_resource_requests{resource="cpu", container!=""}
+      * 1000
+  ||| + kubePodJoinByHost + ')',
+
+  deploymentRamMiBByHost: |||
+    sum by (deployment, namespace) (
+      container_memory_working_set_bytes{container!="", container!="POD", node=~"$hostname"}
+      / (1024 * 1024)
+  ||| + kubePodJoinByHost + ')',
+
+  deploymentRamRequestedMiBByHost: |||
+    sum by (deployment, namespace) (
+      kube_pod_container_resource_requests{resource="memory", container!=""}
+      / (1024 * 1024)
+  ||| + kubePodJoinByHost + ')',
+
   // --- Device workload map (one row per device: idle=blue, active=green) ---
   deviceWorkloadMap: |||
     (

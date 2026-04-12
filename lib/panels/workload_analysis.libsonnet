@@ -31,22 +31,22 @@ local tsDefaults =
     + table.panelOptions.withDescription('Node CPU (millicores) and RAM (MiB) usage per Kubernetes deployment. Source: kube-state-metrics + cAdvisor.')
     + table.panelOptions.withGridPos(10, 24, 0, 1)
     + table.queryOptions.withTargets([
-      prometheus.new(ds, q.deploymentCpuMillicores)
+      prometheus.new(ds, q.deploymentCpuMillicoresByHost)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('A'),
 
-      prometheus.new(ds, q.deploymentCpuRequested)
+      prometheus.new(ds, q.deploymentCpuRequestedByHost)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('B'),
 
-      prometheus.new(ds, q.deploymentRamMiB)
+      prometheus.new(ds, q.deploymentRamMiBByHost)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('C'),
 
-      prometheus.new(ds, q.deploymentRamRequestedMiB)
+      prometheus.new(ds, q.deploymentRamRequestedMiBByHost)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('D'),

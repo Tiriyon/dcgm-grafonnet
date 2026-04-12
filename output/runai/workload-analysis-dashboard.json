@@ -153,7 +153,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum by (deployment, namespace) (\n  rate(container_cpu_usage_seconds_total{container!=\"\", container!=\"POD\"}[5m]) * 1000\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
+               "expr": "sum by (deployment, namespace) (\n  rate(container_cpu_usage_seconds_total{container!=\"\", container!=\"POD\", node=~\"$hostname\"}[5m]) * 1000\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"}\n    and on(pod, namespace) kube_pod_info{node=~\"$hostname\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
                "format": "table",
                "instant": true,
                "refId": "A"
@@ -163,7 +163,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum by (deployment, namespace) (\n  kube_pod_container_resource_requests{resource=\"cpu\", container!=\"\"}\n  * 1000\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
+               "expr": "sum by (deployment, namespace) (\n  kube_pod_container_resource_requests{resource=\"cpu\", container!=\"\"}\n  * 1000\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"}\n    and on(pod, namespace) kube_pod_info{node=~\"$hostname\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
                "format": "table",
                "instant": true,
                "refId": "B"
@@ -173,7 +173,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum by (deployment, namespace) (\n  container_memory_working_set_bytes{container!=\"\", container!=\"POD\"}\n  / (1024 * 1024)\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
+               "expr": "sum by (deployment, namespace) (\n  container_memory_working_set_bytes{container!=\"\", container!=\"POD\", node=~\"$hostname\"}\n  / (1024 * 1024)\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"}\n    and on(pod, namespace) kube_pod_info{node=~\"$hostname\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
                "format": "table",
                "instant": true,
                "refId": "C"
@@ -183,7 +183,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum by (deployment, namespace) (\n  kube_pod_container_resource_requests{resource=\"memory\", container!=\"\"}\n  / (1024 * 1024)\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
+               "expr": "sum by (deployment, namespace) (\n  kube_pod_container_resource_requests{resource=\"memory\", container!=\"\"}\n  / (1024 * 1024)\n* on(pod, namespace) group_left(deployment)\nlabel_replace(\n  kube_pod_owner{owner_kind=\"ReplicaSet\"}\n    and on(pod, namespace) kube_pod_info{node=~\"$hostname\"},\n  \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n)\n)",
                "format": "table",
                "instant": true,
                "refId": "D"
