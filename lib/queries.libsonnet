@@ -106,6 +106,12 @@
     )
   |||,
 
+  workloadComputePctByHost: |||
+    avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (
+      DCGM_FI_PROF_GR_ENGINE_ACTIVE{exported_pod!="", Hostname=~"$hostname"} * 100
+    )
+  |||,
+
   // VRAM used (MiB) per workload
   workloadVramUsed: |||
     avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (
@@ -113,10 +119,22 @@
     )
   |||,
 
+  workloadVramUsedByHost: |||
+    avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (
+      DCGM_FI_DEV_FB_USED{exported_pod!="", Hostname=~"$hostname"}
+    )
+  |||,
+
   // VRAM total (MiB) per workload — denominator for Used/Total display
   workloadVramTotal: |||
     avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (
       DCGM_FI_DEV_FB_USED{exported_pod!=""} + DCGM_FI_DEV_FB_FREE{exported_pod!=""}
+    )
+  |||,
+
+  workloadVramTotalByHost: |||
+    avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (
+      DCGM_FI_DEV_FB_USED{exported_pod!="", Hostname=~"$hostname"} + DCGM_FI_DEV_FB_FREE{exported_pod!="", Hostname=~"$hostname"}
     )
   |||,
 
@@ -260,16 +278,18 @@
   |||,
 
   // --- Pod status (kube-state-metrics) ---
-  // Pod counts by phase per namespace — pivoted into Running/Pending/Failed/Succeeded columns
+  // Pod counts by phase per namespace, filtered by node=$hostname
   podCountByPhase: |||
     sum by (namespace, phase) (
       kube_pod_status_phase{namespace=~"$namespace", phase=~"Running|Pending|Failed|Succeeded"} == 1
+      and on(pod, namespace) kube_pod_info{node=~"$hostname"}
     )
   |||,
 
-  // Individual pods in Pending or Failed state for investigation
+  // Individual pods in Pending or Failed state, filtered by node=$hostname
   pendingFailedPods: |||
     kube_pod_status_phase{namespace=~"$namespace", phase=~"Pending|Failed"} == 1
+    and on(pod, namespace) kube_pod_info{node=~"$hostname"}
   |||,
 
   // --- Operational health ---

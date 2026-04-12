@@ -695,7 +695,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "sum by (namespace, phase) (\n  kube_pod_status_phase{namespace=~\"$namespace\", phase=~\"Running|Pending|Failed|Succeeded\"} == 1\n)\n",
+               "expr": "sum by (namespace, phase) (\n  kube_pod_status_phase{namespace=~\"$namespace\", phase=~\"Running|Pending|Failed|Succeeded\"} == 1\n  and on(pod, namespace) kube_pod_info{node=~\"$hostname\"}\n)\n",
                "format": "table",
                "instant": true,
                "refId": "A"
@@ -820,7 +820,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "kube_pod_status_phase{namespace=~\"$namespace\", phase=~\"Pending|Failed\"} == 1\n",
+               "expr": "kube_pod_status_phase{namespace=~\"$namespace\", phase=~\"Pending|Failed\"} == 1\nand on(pod, namespace) kube_pod_info{node=~\"$hostname\"}\n",
                "format": "table",
                "instant": true,
                "refId": "A"
@@ -1029,7 +1029,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (\n  DCGM_FI_PROF_GR_ENGINE_ACTIVE{exported_pod!=\"\"} * 100\n)\n",
+               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (\n  DCGM_FI_PROF_GR_ENGINE_ACTIVE{exported_pod!=\"\", Hostname=~\"$hostname\"} * 100\n)\n",
                "format": "table",
                "instant": true,
                "refId": "A"
@@ -1039,7 +1039,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (\n  DCGM_FI_DEV_FB_USED{exported_pod!=\"\"}\n)\n",
+               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (\n  DCGM_FI_DEV_FB_USED{exported_pod!=\"\", Hostname=~\"$hostname\"}\n)\n",
                "format": "table",
                "instant": true,
                "refId": "B"
@@ -1049,7 +1049,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (\n  DCGM_FI_DEV_FB_USED{exported_pod!=\"\"} + DCGM_FI_DEV_FB_FREE{exported_pod!=\"\"}\n)\n",
+               "expr": "avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (\n  DCGM_FI_DEV_FB_USED{exported_pod!=\"\", Hostname=~\"$hostname\"} + DCGM_FI_DEV_FB_FREE{exported_pod!=\"\", Hostname=~\"$hostname\"}\n)\n",
                "format": "table",
                "instant": true,
                "refId": "C"

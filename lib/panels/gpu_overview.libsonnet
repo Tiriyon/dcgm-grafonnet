@@ -320,17 +320,17 @@ local ds = '${datasource}';
     + table.panelOptions.withDescription('Per-workload GPU usage. VRAM shown as Used/Total (MiB).')
     + table.panelOptions.withGridPos(10, 24, 0, 24)
     + table.queryOptions.withTargets([
-      prometheus.new(ds, q.workloadComputePct)
+      prometheus.new(ds, q.workloadComputePctByHost)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('A'),
 
-      prometheus.new(ds, q.workloadVramUsed)
+      prometheus.new(ds, q.workloadVramUsedByHost)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('B'),
 
-      prometheus.new(ds, q.workloadVramTotal)
+      prometheus.new(ds, q.workloadVramTotalByHost)
       + prometheus.withFormat('table')
       + prometheus.withInstant(true)
       + prometheus.withRefId('C'),
