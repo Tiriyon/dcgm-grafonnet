@@ -25,6 +25,30 @@
   avgPower:
     'avg(DCGM_FI_DEV_POWER_USAGE)',
 
+  // --- Memory summary (filtered by $hostname — for standalone dashboards) ---
+  totalMemoryCapacityByHost:
+    'sum(DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"} + DCGM_FI_DEV_FB_FREE{Hostname=~"$hostname"}) / 1024',
+
+  memoryInUseByHost:
+    'sum(DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"}) / 1024',
+
+  avgMemoryUtilByHost:
+    'avg((DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"} / (DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"} + DCGM_FI_DEV_FB_FREE{Hostname=~"$hostname"})) * 100)',
+
+  oomRiskPctByHost: |||
+    (
+      count((DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"} / (DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"} + DCGM_FI_DEV_FB_FREE{Hostname=~"$hostname"})) > 0.85)
+      /
+      count(DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"})
+    ) * 100 or vector(0)
+  |||,
+
+  avgTemperatureByHost:
+    'avg(DCGM_FI_DEV_GPU_TEMP{Hostname=~"$hostname"})',
+
+  avgPowerByHost:
+    'avg(DCGM_FI_DEV_POWER_USAGE{Hostname=~"$hostname"})',
+
   // --- Memory by device — per-node panels (Hostname=~"$hostname") ---
   // Whole GPUs only: clean legend without MIG ID noise
   memoryUtilWholeGPU: |||
@@ -53,6 +77,9 @@
 
   workloadMemoryOverTime:
     'sum by (exported_pod, exported_namespace, Hostname, modelName) (DCGM_FI_DEV_FB_USED{exported_pod!=""})',
+
+  workloadMemoryOverTimeByHost:
+    'sum by (exported_pod, exported_namespace, Hostname, modelName) (DCGM_FI_DEV_FB_USED{exported_pod!="", Hostname=~"$hostname"})',
 
   // --- Device load ---
   // Top 10 by pure compute % (GR engine active) — no composite formula
@@ -232,6 +259,19 @@
     )
   |||,
 
+  // --- Pod status (kube-state-metrics) ---
+  // Pod counts by phase per namespace — pivoted into Running/Pending/Failed/Succeeded columns
+  podCountByPhase: |||
+    sum by (namespace, phase) (
+      kube_pod_status_phase{namespace=~"$namespace", phase=~"Running|Pending|Failed|Succeeded"} == 1
+    )
+  |||,
+
+  // Individual pods in Pending or Failed state for investigation
+  pendingFailedPods: |||
+    kube_pod_status_phase{namespace=~"$namespace", phase=~"Pending|Failed"} == 1
+  |||,
+
   // --- Operational health ---
   powerByDevice: |||
     avg by (gpu, GPU_I_ID, Hostname, UUID) (
@@ -247,6 +287,9 @@
 
   tensorUtilByWorkload:
     'avg by (exported_pod) (DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{exported_pod!=""} * 100)',
+
+  tensorUtilByWorkloadByHost:
+    'avg by (exported_pod) (DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{exported_pod!="", Hostname=~"$hostname"} * 100)',
 
   smClockByModel:
     'avg by (modelName) (DCGM_FI_DEV_SM_CLOCK{exported_namespace!="",Hostname=~"$hostname"})',
@@ -409,6 +452,12 @@
 
   pvcCapacityBytes:
     'kubelet_volume_stats_capacity_bytes{namespace=~"$namespace", node=~"$hostname"}',
+
+  pvcUsedPctOverTime: |||
+    kubelet_volume_stats_used_bytes{namespace=~"$namespace", node=~"$hostname"}
+    / kubelet_volume_stats_capacity_bytes{namespace=~"$namespace", node=~"$hostname"}
+    * 100
+  |||,
 
   // --- vLLM Inference Capacity (used by vllm_capacity.libsonnet) ---
   // $namespace = Kubernetes namespace of the vLLM pods.
