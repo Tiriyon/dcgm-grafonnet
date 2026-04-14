@@ -25,6 +25,30 @@
   avgPower:
     'avg(DCGM_FI_DEV_POWER_USAGE)',
 
+  // --- Memory summary (filtered by $hostname — for standalone dashboards) ---
+  totalMemoryCapacityByHost:
+    'sum(DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"} + DCGM_FI_DEV_FB_FREE{Hostname=~"$hostname"}) / 1024',
+
+  memoryInUseByHost:
+    'sum(DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"}) / 1024',
+
+  avgMemoryUtilByHost:
+    'avg((DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"} / (DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"} + DCGM_FI_DEV_FB_FREE{Hostname=~"$hostname"})) * 100)',
+
+  oomRiskPctByHost: |||
+    (
+      count((DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"} / (DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"} + DCGM_FI_DEV_FB_FREE{Hostname=~"$hostname"})) > 0.85)
+      /
+      count(DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"})
+    ) * 100 or vector(0)
+  |||,
+
+  avgTemperatureByHost:
+    'avg(DCGM_FI_DEV_GPU_TEMP{Hostname=~"$hostname"})',
+
+  avgPowerByHost:
+    'avg(DCGM_FI_DEV_POWER_USAGE{Hostname=~"$hostname"})',
+
   // --- Memory by device — per-node panels (Hostname=~"$hostname") ---
   // Whole GPUs only: clean legend without MIG ID noise
   memoryUtilWholeGPU: |||
@@ -54,12 +78,15 @@
   workloadMemoryOverTime:
     'sum by (exported_pod, exported_namespace, Hostname, modelName) (DCGM_FI_DEV_FB_USED{exported_pod!=""})',
 
+  workloadMemoryOverTimeByHost:
+    'sum by (exported_pod, exported_namespace, Hostname, modelName) (DCGM_FI_DEV_FB_USED{exported_pod!="", Hostname=~"$hostname"})',
+
   // --- Device load ---
   // Top 10 by pure compute % (GR engine active) — no composite formula
   top10DeviceCompute: |||
     topk(10,
       avg by (gpu, GPU_I_ID, GPU_I_PROFILE, Hostname, modelName, UUID) (
-        DCGM_FI_PROF_GR_ENGINE_ACTIVE * 100
+        DCGM_FI_PROF_GR_ENGINE_ACTIVE{Hostname=~"$hostname"} * 100
       )
     )
   |||,
@@ -79,6 +106,12 @@
     )
   |||,
 
+  workloadComputePctByHost: |||
+    avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (
+      DCGM_FI_PROF_GR_ENGINE_ACTIVE{exported_pod!="", Hostname=~"$hostname"} * 100
+    )
+  |||,
+
   // VRAM used (MiB) per workload
   workloadVramUsed: |||
     avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (
@@ -86,10 +119,22 @@
     )
   |||,
 
+  workloadVramUsedByHost: |||
+    avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (
+      DCGM_FI_DEV_FB_USED{exported_pod!="", Hostname=~"$hostname"}
+    )
+  |||,
+
   // VRAM total (MiB) per workload — denominator for Used/Total display
   workloadVramTotal: |||
     avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (
       DCGM_FI_DEV_FB_USED{exported_pod!=""} + DCGM_FI_DEV_FB_FREE{exported_pod!=""}
+    )
+  |||,
+
+  workloadVramTotalByHost: |||
+    avg by (exported_pod, exported_namespace, gpu, GPU_I_ID, Hostname, modelName) (
+      DCGM_FI_DEV_FB_USED{exported_pod!="", Hostname=~"$hostname"} + DCGM_FI_DEV_FB_FREE{exported_pod!="", Hostname=~"$hostname"}
     )
   |||,
 
@@ -137,12 +182,45 @@
       / (1024 * 1024)
   ||| + kubePodJoin + ')',
 
+  // --- Deployment-level filtered by $hostname (for standalone dashboards) ---
+  local kubePodJoinByHost = |||
+    * on(pod, namespace) group_left(deployment)
+    label_replace(
+      kube_pod_owner{owner_kind="ReplicaSet"}
+        and on(pod, namespace) kube_pod_info{node=~"$hostname"},
+      "deployment", "$1", "owner_name", "(.+)-[^-]+"
+    )
+  |||,
+
+  deploymentCpuMillicoresByHost: |||
+    sum by (deployment, namespace) (
+      rate(container_cpu_usage_seconds_total{container!="", container!="POD", node=~"$hostname"}[5m]) * 1000
+  ||| + kubePodJoinByHost + ')',
+
+  deploymentCpuRequestedByHost: |||
+    sum by (deployment, namespace) (
+      kube_pod_container_resource_requests{resource="cpu", container!=""}
+      * 1000
+  ||| + kubePodJoinByHost + ')',
+
+  deploymentRamMiBByHost: |||
+    sum by (deployment, namespace) (
+      container_memory_working_set_bytes{container!="", container!="POD", node=~"$hostname"}
+      / (1024 * 1024)
+  ||| + kubePodJoinByHost + ')',
+
+  deploymentRamRequestedMiBByHost: |||
+    sum by (deployment, namespace) (
+      kube_pod_container_resource_requests{resource="memory", container!=""}
+      / (1024 * 1024)
+  ||| + kubePodJoinByHost + ')',
+
   // --- Device workload map (one row per device: idle=blue, active=green) ---
   deviceWorkloadMap: |||
     (
       clamp_max(
         count by (Hostname, modelName, gpu, GPU_I_ID, GPU_I_PROFILE, UUID, exported_pod) (
-          DCGM_FI_DEV_FB_USED{exported_pod!=""}
+          DCGM_FI_DEV_FB_USED{exported_pod!="",Hostname=~"$hostname"}
         ),
         1
       )
@@ -150,9 +228,9 @@
     or
     (
       (
-        count by (Hostname, modelName, gpu, GPU_I_ID, GPU_I_PROFILE, UUID) (DCGM_FI_DEV_FB_USED)
+        count by (Hostname, modelName, gpu, GPU_I_ID, GPU_I_PROFILE, UUID) (DCGM_FI_DEV_FB_USED{Hostname=~"$hostname"})
         unless
-        count by (Hostname, modelName, gpu, GPU_I_ID, GPU_I_PROFILE, UUID) (DCGM_FI_DEV_FB_USED{exported_pod!=""})
+        count by (Hostname, modelName, gpu, GPU_I_ID, GPU_I_PROFILE, UUID) (DCGM_FI_DEV_FB_USED{exported_pod!="", Hostname=~"$hostname"})
       ) * 0
     )
   |||,
@@ -232,6 +310,21 @@
     )
   |||,
 
+  // --- Pod status (kube-state-metrics) ---
+  // Pod counts by phase per namespace, filtered by node=$hostname
+  podCountByPhase: |||
+    sum by (namespace, phase) (
+      kube_pod_status_phase{namespace=~"$namespace", phase=~"Running|Pending|Failed|Succeeded"} == 1
+      and on(pod, namespace) kube_pod_info{node=~"$hostname"}
+    )
+  |||,
+
+  // Individual pods in Pending or Failed state, filtered by node=$hostname
+  pendingFailedPods: |||
+    kube_pod_status_phase{namespace=~"$namespace", phase=~"Pending|Failed"} == 1
+    and on(pod, namespace) kube_pod_info{node=~"$hostname"}
+  |||,
+
   // --- Operational health ---
   powerByDevice: |||
     avg by (gpu, GPU_I_ID, Hostname, UUID) (
@@ -248,8 +341,11 @@
   tensorUtilByWorkload:
     'avg by (exported_pod) (DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{exported_pod!=""} * 100)',
 
+  tensorUtilByWorkloadByHost:
+    'avg by (exported_pod) (DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{exported_pod!="", Hostname=~"$hostname"} * 100)',
+
   smClockByModel:
-    'avg by (modelName) (DCGM_FI_DEV_SM_CLOCK{exported_namespace!=""})',
+    'avg by (modelName) (DCGM_FI_DEV_SM_CLOCK{exported_namespace!="",Hostname=~"$hostname"})',
 
   // --- Reporting queries (used by gpu-weekly-report.jsonnet) ---
   // Cluster-wide averages used by report_summary / report panels
@@ -364,6 +460,56 @@
       count(DCGM_FI_DEV_FB_USED{GPU_I_ID!=""})
       - (count(DCGM_FI_DEV_FB_USED{GPU_I_ID!="", exported_pod!=""}) or vector(0))
     ) / count(DCGM_FI_DEV_FB_USED{GPU_I_ID!=""}) * 100 or vector(0)
+  |||,
+
+  // --- Node & PV/PVC Storage ---
+  // Node disk usage from node-exporter; PVC metrics from kubelet.
+  // instance=~"$hostname" bridges DCGM Hostname variable to node-exporter instance label.
+  avgNodeDiskUsedPct: |||
+    avg(
+      100 - (
+        node_filesystem_avail_bytes{mountpoint="/", fstype!="tmpfs", instance=~"$hostname"}
+        / node_filesystem_size_bytes{mountpoint="/", fstype!="tmpfs", instance=~"$hostname"}
+        * 100
+      )
+    )
+  |||,
+
+  nodeDiskUsagePct: |||
+    100 - (
+      node_filesystem_avail_bytes{mountpoint="/", fstype!="tmpfs", instance=~"$hostname"}
+      / node_filesystem_size_bytes{mountpoint="/", fstype!="tmpfs", instance=~"$hostname"}
+      * 100
+    )
+  |||,
+
+  totalPvcs:
+    'count(kubelet_volume_stats_capacity_bytes{namespace=~"$namespace", node=~"$hostname"}) or vector(0)',
+
+  pvcsAbove80Pct: |||
+    count(
+      kubelet_volume_stats_used_bytes{namespace=~"$namespace", node=~"$hostname"}
+      / kubelet_volume_stats_capacity_bytes{namespace=~"$namespace", node=~"$hostname"}
+      > 0.80
+    ) or vector(0)
+  |||,
+
+  pvcUsedPct: |||
+    kubelet_volume_stats_used_bytes{namespace=~"$namespace", node=~"$hostname"}
+    / kubelet_volume_stats_capacity_bytes{namespace=~"$namespace", node=~"$hostname"}
+    * 100
+  |||,
+
+  pvcUsedBytes:
+    'kubelet_volume_stats_used_bytes{namespace=~"$namespace", node=~"$hostname"}',
+
+  pvcCapacityBytes:
+    'kubelet_volume_stats_capacity_bytes{namespace=~"$namespace", node=~"$hostname"}',
+
+  pvcUsedPctOverTime: |||
+    kubelet_volume_stats_used_bytes{namespace=~"$namespace", node=~"$hostname"}
+    / kubelet_volume_stats_capacity_bytes{namespace=~"$namespace", node=~"$hostname"}
+    * 100
   |||,
 
   // --- vLLM Inference Capacity (used by vllm_capacity.libsonnet) ---

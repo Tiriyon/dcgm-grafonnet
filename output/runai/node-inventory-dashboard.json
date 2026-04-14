@@ -1,0 +1,731 @@
+{
+   "description": "Variable-driven deep-dive into node hardware, GPU devices, CPU/RAM, and deployments. Mirrors Run:AI node/resource visibility.",
+   "editable": true,
+   "graphTooltip": 1,
+   "liveNow": true,
+   "panels": [
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+         },
+         "id": 1,
+         "title": "Device Inventory",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Per-node GPU device inventory. Sorted by compute utilization.",
+         "fieldConfig": {
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Compute %"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.displayMode",
+                        "value": "color-background"
+                     },
+                     {
+                        "id": "max",
+                        "value": 100
+                     },
+                     {
+                        "id": "min",
+                        "value": 0
+                     },
+                     {
+                        "id": "thresholds",
+                        "value": {
+                           "steps": [
+                              {
+                                 "color": "rgba(50, 172, 45, 0.2)",
+                                 "value": null
+                              },
+                              {
+                                 "color": "rgba(237, 129, 40, 0.2)",
+                                 "value": 70
+                              },
+                              {
+                                 "color": "rgba(245, 54, 54, 0.2)",
+                                 "value": 90
+                              }
+                           ]
+                        }
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Memory %"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.displayMode",
+                        "value": "color-background"
+                     },
+                     {
+                        "id": "max",
+                        "value": 100
+                     },
+                     {
+                        "id": "min",
+                        "value": 0
+                     },
+                     {
+                        "id": "thresholds",
+                        "value": {
+                           "steps": [
+                              {
+                                 "color": "rgba(50, 172, 45, 0.2)",
+                                 "value": null
+                              },
+                              {
+                                 "color": "rgba(237, 129, 40, 0.2)",
+                                 "value": 70
+                              },
+                              {
+                                 "color": "rgba(245, 54, 54, 0.2)",
+                                 "value": 85
+                              }
+                           ]
+                        }
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "VRAM Used (GB)"
+                  },
+                  "properties": [
+                     {
+                        "id": "decimals",
+                        "value": 1
+                     },
+                     {
+                        "id": "unit",
+                        "value": "decgbytes"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "VRAM Total (GB)"
+                  },
+                  "properties": [
+                     {
+                        "id": "decimals",
+                        "value": 1
+                     },
+                     {
+                        "id": "unit",
+                        "value": "decgbytes"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Power (W)"
+                  },
+                  "properties": [
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "watt"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Temp (C)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.displayMode",
+                        "value": "color-background"
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "thresholds",
+                        "value": {
+                           "steps": [
+                              {
+                                 "color": "rgba(50, 172, 45, 0.2)",
+                                 "value": null
+                              },
+                              {
+                                 "color": "rgba(237, 129, 40, 0.2)",
+                                 "value": 70
+                              },
+                              {
+                                 "color": "rgba(245, 54, 54, 0.2)",
+                                 "value": 80
+                              }
+                           ]
+                        }
+                     },
+                     {
+                        "id": "unit",
+                        "value": "celsius"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Model"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 130
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Host"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 150
+                     }
+                  ]
+               }
+            ]
+         },
+         "gridPos": {
+            "h": 12,
+            "w": 12,
+            "x": 0,
+            "y": 1
+         },
+         "id": 2,
+         "options": {
+            "showHeader": true,
+            "sortBy": [
+               {
+                  "desc": true,
+                  "displayName": "Compute %"
+               }
+            ]
+         },
+         "pluginVersion": "v11.4.0",
+         "repeat": "hostname",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (gpu, GPU_I_ID, GPU_I_PROFILE, Hostname, modelName, UUID) (\n  DCGM_FI_PROF_GR_ENGINE_ACTIVE{Hostname=~\"$hostname\"} * 100\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "A"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_FB_USED{Hostname=~\"$hostname\"}\n  / (DCGM_FI_DEV_FB_USED{Hostname=~\"$hostname\"} + DCGM_FI_DEV_FB_FREE{Hostname=~\"$hostname\"}) * 100\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "B"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_FB_USED{Hostname=~\"$hostname\"} / 1024\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "C"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  (DCGM_FI_DEV_FB_USED{Hostname=~\"$hostname\"} + DCGM_FI_DEV_FB_FREE{Hostname=~\"$hostname\"}) / 1024\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "D"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_POWER_USAGE{Hostname=~\"$hostname\"}\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "E"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "avg by (gpu, GPU_I_ID, Hostname, UUID) (\n  DCGM_FI_DEV_GPU_TEMP{Hostname=~\"$hostname\"}\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "F"
+            }
+         ],
+         "title": "Device Inventory & Status — $hostname",
+         "transformations": [
+            {
+               "id": "merge",
+               "options": { }
+            },
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": {
+                     "Time": true,
+                     "UUID": true
+                  },
+                  "indexByName": {
+                     "GPU_I_ID": 2,
+                     "GPU_I_PROFILE": 3,
+                     "Hostname": 0,
+                     "Value #A": 5,
+                     "Value #B": 6,
+                     "Value #C": 7,
+                     "Value #D": 8,
+                     "Value #E": 9,
+                     "Value #F": 10,
+                     "gpu": 1,
+                     "modelName": 4
+                  },
+                  "renameByName": {
+                     "GPU_I_ID": "MIG ID",
+                     "GPU_I_PROFILE": "Profile",
+                     "Hostname": "Host",
+                     "Value #A": "Compute %",
+                     "Value #B": "Memory %",
+                     "Value #C": "VRAM Used (GB)",
+                     "Value #D": "VRAM Total (GB)",
+                     "Value #E": "Power (W)",
+                     "Value #F": "Temp (C)",
+                     "gpu": "GPU",
+                     "modelName": "Model"
+                  }
+               }
+            }
+         ],
+         "type": "table"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 13
+         },
+         "id": 3,
+         "title": "Node Resources",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Node CPU and RAM from kube-state-metrics / cAdvisor. Node label must match $hostname.",
+         "fieldConfig": {
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "CPU Used (cores)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 2
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "CPU Total (cores)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Node RAM Used (MiB)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "decmbytes"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Node RAM Total (MiB)"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 140
+                     },
+                     {
+                        "id": "decimals",
+                        "value": 0
+                     },
+                     {
+                        "id": "unit",
+                        "value": "decmbytes"
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Node"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 180
+                     }
+                  ]
+               }
+            ]
+         },
+         "gridPos": {
+            "h": 5,
+            "w": 12,
+            "x": 0,
+            "y": 14
+         },
+         "id": 4,
+         "options": {
+            "showHeader": true
+         },
+         "pluginVersion": "v11.4.0",
+         "repeat": "hostname",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (node) (\n  rate(container_cpu_usage_seconds_total{\n    container!=\"\", container!=\"POD\", node=~\"$hostname\"\n  }[5m])\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "A"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "kube_node_status_allocatable{resource=\"cpu\", node=~\"$hostname\"}",
+               "format": "table",
+               "instant": true,
+               "refId": "B"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (node) (\n  container_memory_working_set_bytes{\n    container!=\"\", container!=\"POD\", node=~\"$hostname\"\n  }\n) / (1024 * 1024)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "C"
+            },
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "kube_node_status_allocatable{resource=\"memory\", node=~\"$hostname\"} / (1024 * 1024)",
+               "format": "table",
+               "instant": true,
+               "refId": "D"
+            }
+         ],
+         "title": "Node Resources — $hostname",
+         "transformations": [
+            {
+               "id": "merge",
+               "options": { }
+            },
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": {
+                     "Time": true,
+                     "__name__": true,
+                     "container": true,
+                     "endpoint": true,
+                     "job": true,
+                     "namespace": true,
+                     "prometheus": true,
+                     "resource": true,
+                     "service": true,
+                     "unit": true
+                  },
+                  "indexByName": {
+                     "Value #A": 1,
+                     "Value #B": 2,
+                     "Value #C": 3,
+                     "Value #D": 4,
+                     "node": 0
+                  },
+                  "renameByName": {
+                     "Value #A": "CPU Used (cores)",
+                     "Value #B": "CPU Total (cores)",
+                     "Value #C": "Node RAM Used (MiB)",
+                     "Value #D": "Node RAM Total (MiB)",
+                     "node": "Node"
+                  }
+               }
+            }
+         ],
+         "type": "table"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 19
+         },
+         "id": 5,
+         "title": "Deployments per Node",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "datasource",
+            "uid": "-- Mixed --"
+         },
+         "description": "Active deployments per node (kube-state-metrics ReplicaSet owner join)",
+         "fieldConfig": {
+            "overrides": [
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Deployment"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 260
+                     }
+                  ]
+               },
+               {
+                  "matcher": {
+                     "id": "byName",
+                     "options": "Namespace"
+                  },
+                  "properties": [
+                     {
+                        "id": "custom.width",
+                        "value": 180
+                     }
+                  ]
+               }
+            ]
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 20
+         },
+         "id": 6,
+         "options": {
+            "showHeader": true,
+            "sortBy": [
+               {
+                  "desc": false,
+                  "displayName": "Namespace"
+               }
+            ]
+         },
+         "pluginVersion": "v11.4.0",
+         "repeat": "hostname",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "count by (node, deployment, namespace) (\n  kube_pod_info{node=~\"$hostname\"}\n  * on(pod, namespace) group_left(deployment)\n  label_replace(\n    kube_pod_owner{owner_kind=\"ReplicaSet\"},\n    \"deployment\", \"$1\", \"owner_name\", \"(.+)-[^-]+\"\n  )\n)\n",
+               "format": "table",
+               "instant": true,
+               "refId": "A"
+            }
+         ],
+         "title": "Deployments on Node — $hostname",
+         "transformations": [
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": {
+                     "Time": true,
+                     "Value #A": true
+                  },
+                  "indexByName": {
+                     "deployment": 2,
+                     "namespace": 1,
+                     "node": 0
+                  },
+                  "renameByName": {
+                     "deployment": "Deployment",
+                     "namespace": "Namespace",
+                     "node": "Node"
+                  }
+               }
+            }
+         ],
+         "type": "table"
+      }
+   ],
+   "refresh": "30s",
+   "schemaVersion": 39,
+   "tags": [
+      "gpu",
+      "inventory",
+      "node",
+      "dcgm",
+      "runai"
+   ],
+   "templating": {
+      "list": [
+         {
+            "name": "datasource",
+            "query": "prometheus",
+            "type": "datasource"
+         },
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "includeAll": true,
+            "multi": true,
+            "name": "hostname",
+            "query": "label_values(DCGM_FI_DEV_FB_USED, Hostname)",
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+         },
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "includeAll": true,
+            "multi": true,
+            "name": "namespace",
+            "query": "label_values(DCGM_FI_DEV_FB_USED{exported_namespace!=\"\"}, exported_namespace)",
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+         },
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "includeAll": true,
+            "multi": true,
+            "name": "gpu_model",
+            "query": "label_values(DCGM_FI_DEV_FB_USED, modelName)",
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+         },
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "includeAll": true,
+            "multi": true,
+            "name": "workload",
+            "query": "label_values(DCGM_FI_DEV_FB_USED{exported_pod!=\"\"}, exported_pod)",
+            "refresh": 2,
+            "sort": 1,
+            "type": "query"
+         }
+      ]
+   },
+   "time": {
+      "from": "now-1h",
+      "to": "now"
+   },
+   "timepicker": {
+      "refresh_intervals": [
+         "10s",
+         "30s",
+         "1m",
+         "5m",
+         "15m",
+         "30m",
+         "1h"
+      ]
+   },
+   "timezone": "",
+   "title": "Node & Device Inventory",
+   "uid": "node-device-inventory"
+}
